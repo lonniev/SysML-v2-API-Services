@@ -1,10 +1,19 @@
-import java.time.ZoneId
-import Metadata._
-import VersionIdentifiers._
-import com.typesafe.sbt.packager.docker.Cmd
-import sbt.io.Path.rebase
-import com.amazonaws.regions.{Region, Regions}
-
+error id: `<none>`.
+file://<WORKSPACE>/build.sbt
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+	 -dockerSettings.
+	 -dockerSettings#
+	 -dockerSettings().
+	 -scala/Predef.dockerSettings.
+	 -scala/Predef.dockerSettings#
+	 -scala/Predef.dockerSettings().
+offset: 1591
+uri: file://<WORKSPACE>/build.sbt
+text:
+```scala
 name := """SysML-v2-API-Services"""
 organization := "org.omg"
 
@@ -12,34 +21,7 @@ version := "2025-02"
 
 javacOptions ++= Seq("-source", "11", "-target", "11", "-Xlint")
 
-enablePlugins(EcrPlugin)
-
-( Docker / packageName ) := "sysml2-api-services"
-
-( Docker / version ) := version.value
-
-Ecr / region           := Region.getRegion(Regions.US_EAST_1)
-Ecr /repositoryName   := (Docker / packageName).value
-
-repositoryTags in Ecr := Seq((Docker / version).value, "latest")
-
-// Create the repository before authentication takes place (optional)
-Ecr / login := ((Ecr / login) dependsOn (Ecr / createRepository)).value
-
-// Authenticate and publish a local Docker image before pushing to ECR
-Ecr / push := ((Ecr / push) dependsOn (Docker / publishLocal, Ecr / login)).value
-
-dockerExposedPorts ++= Seq(9000)
-
 val dockerSettings: Seq[Setting[_]] = Seq(
-
-  dockerBaseImage := "openjdk:11-jdk-slim",
-
-  // in the shell that runs SBT (or in a GHA job), the devops user
-  // has to authenticate the shell with docker
-  // echo $GITHUB_TOKEN | docker login ghcr.io -u lonniev --password-stdin
-  Docker / version.withRank(KeyRanks.Invisible)   := "2025-02",
-  dockerUpdateLatest.withRank(KeyRanks.Invisible) := true,
 
   // add a packaging path mapper that leads to copying the resources into the image's conf directory
   Docker / mappings ++= {
@@ -54,31 +36,36 @@ val dockerSettings: Seq[Setting[_]] = Seq(
 
   // add a Docker build command to allow code within the image to write into its directories
   dockerCommands := dockerCommands.value.flatMap {
-    case Cmd("EXPOSE", "9000") =>
+    case Cmd("USER", "1001:0") =>
       Seq(
-        Cmd("RUN", "chmod", "-R", "777", "/opt/docker"),
-        Cmd("RUN", "chown", "-R", "1001:1001", "/opt/docker"),
-        Cmd("EXPOSE", "9000"),
+        Cmd("RUN", "chmod -R 777 /opt/docker"),
+        Cmd("USER", "1001:0"),
       )
     case cmd => Seq(cmd)
   }
 )
 
-dockerEnvVars := Map(
-  "DB_HOST" -> "mydbhost",
-  "DB_PORT" -> "5432",
-  "DB_NAME" -> "sysml2",
-  "DB_USER" -> "postgres",
-  "DB_PASSWORD" -> "mysecretpassword",
-  "JAVA_OPTS" -> "-Ddb.host=mydbhost -Ddb.port=5432 -Ddb.name=sysml2 -Ddb.user=postgres -Ddb.password=mysecretpassword"
-  )
+val commonSettings: Seq[Setting[_]] = Seq(
+  dockerUsername.withRank(KeyRanks.Invisible)   := Some("intercax"),
+  dockerRepository.withRank(KeyRanks.Invisible) := Some("ghcr.io"),
+  dockerBaseImage := "openjdk:11-jre-slim",
+
+  // in the shell that runs SBT (or in a GHA job), the devops user
+  // has to authenticate the shell with docker
+  // echo $GITHUB_TOKEN | docker login ghcr.io -u lonniev --password-stdin
+  Docker / version.withRank(KeyRanks.Invisible)   := s"$coreVersion-$releaseIdentifier-$buildIdentifier",
+  dockerUpdateLatest.withRank(KeyRanks.Invisible) := true,
+)
 
 lazy val root = (project in file(".")).
   enablePlugins(PlayJava).
   enablePlugins(DockerPlugin).
   settings(
-    dockerSettings
+    commonSettings,
+    dockerSetting@@s
   )
+
+dockerExposedPorts ++= Seq(9000)
 
 scalaVersion := "2.12.6"
 
@@ -110,3 +97,10 @@ publishArtifact in(Compile, packageDoc) := false
 // https://github.com/playframework/playframework/issues/8286#issuecomment-488733669
 // hopefully fixed in Play 2.8
 PlayKeys.devSettings += "play.server.http.idleTimeout" -> "infinite"
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.

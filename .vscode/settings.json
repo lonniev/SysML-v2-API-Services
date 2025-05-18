@@ -1,0 +1,6 @@
+{
+    "files.watcherExclude": {
+        "**/target": true
+    },
+    "metals.inlayHints.implicitConversions.enable": true
+}
