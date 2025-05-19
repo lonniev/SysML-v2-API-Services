@@ -1,0 +1,455 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS Marketplace Service with Aurora PostgreSQL, ECS Fargate, HTTPS ALB, and Secrets Manager (Custom Defaults)
+
+Parameters:
+  DBName:
+    Type: String
+    Default: sysml2
+    Description: Name of the initial database
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Default: mysecretpassword
+    Description: Password for the database (stored in Secrets Manager)
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.medium
+    Description: DB instance class
+  ECSImage:
+    Type: String
+    Description: Docker image for ECS task (e.g., from ECR)
+  DomainName:
+    Type: String
+    Description: Domain name for the application
+    Default: 'sysml-v2-api.digitalthread.link'
+  CertificateOption:
+    Type: String
+    Default: New
+    AllowedValues: [Existing, New]
+    Description: Choose to use an existing ACM certificate or request a new one
+  ExistingCertificateArn:
+    Type: String
+    Description: ARN of an existing ACM certificate (required if CertificateOption is Existing)
+    Default: ''
+  HttpPort:
+    Type: Number
+    Default: 80
+    Description: Port for HTTP listener (external ALB)
+  HttpsPort:
+    Type: Number
+    Default: 443
+    Description: Port for HTTPS listener (external ALB)
+  AppPort:
+    Type: Number
+    Default: 9000
+    Description: Port for application container (internal)
+  PostgresPort:
+    Type: Number
+    Default: 5432
+    Description: Port for PostgreSQL database (internal)
+  SecretsOption:
+    Type: String
+    Default: CreateNew
+    AllowedValues: [CreateNew, UseExisting]
+    Description: Choose to create a new secret or use an existing one for database credentials
+  ExistingSecretArn:
+    Type: String
+    Description: ARN of an existing secret (required if SecretsOption is UseExisting)
+    Default: ''
+
+Conditions:
+  CreateNewSecret: !Equals [!Ref SecretsOption, CreateNew]
+  UseExistingSecret: !Equals [!Ref SecretsOption, UseExisting]
+  UseExistingCertificate: !Equals [!Ref CertificateOption, Existing]
+  CreateNewCertificate: !Equals [!Ref CertificateOption, New]
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: AppVPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PublicSubnet1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PublicSubnet2
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet2
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: AppIGW
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: PublicRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Aurora
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Aurora cluster
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref PostgresPort
+          ToPort: !Ref PostgresPort
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: CreateNewSecret
+    Properties:
+      Description: Credentials for Aurora PostgreSQL database
+      SecretString: !Sub '{"username": "postgres", "password": "${DBPassword}"}'
+      Tags:
+        - Key: Name
+          Value: AuroraDBCredentials
+
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: '13.12'
+      MasterUsername: !If 
+        - CreateNewSecret
+        - !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:username}}'
+        - !Sub '{{resolve:secretsmanager:${ExistingSecretArn}:SecretString:username}}'
+      MasterUserPassword: !If 
+        - CreateNewSecret
+        - !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}'
+        - !Sub '{{resolve:secretsmanager:${ExistingSecretArn}:SecretString:password}}'
+      DatabaseName: !Ref DBName
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DBSecurityGroup
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: 03:00-04:00
+      PreferredMaintenanceWindow: sun:05:00-sun:06:00
+      Port: !Ref PostgresPort
+
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: aurora-postgresql
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: !Ref DBInstanceClass
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      PubliclyAccessible: false
+
+  # Create new certificate if requested
+  NewCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: CreateNewCertificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      Tags:
+        - Key: Name
+          Value: !Sub "${DomainName}-Certificate"
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS tasks
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref AppPort
+          ToPort: !Ref AppPort
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ALB
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref HttpPort
+          ToPort: !Ref HttpPort
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: !Ref HttpsPort
+          ToPort: !Ref HttpsPort
+          CidrIp: 0.0.0.0/0
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: AppCluster
+
+  # CloudWatch Log Groups for services
+  ECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/sysml-v2-api
+      RetentionInDays: 14
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: app-task
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '256'
+      Memory: '2048'
+      ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: app-container
+          Image: !Ref ECSImage
+          PortMappings:
+            - ContainerPort: !Ref AppPort
+              HostPort: !Ref AppPort
+          Environment:
+            - Name: DB_HOST
+              Value: !GetAtt AuroraCluster.Endpoint.Address
+            - Name: DB_PORT
+              Value: !Ref PostgresPort
+            - Name: DB_NAME
+              Value: !Ref DBName
+            - Name: DB_USER
+              Value: !If 
+                - CreateNewSecret
+                - !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:username}}'
+                - !Sub '{{resolve:secretsmanager:${ExistingSecretArn}:SecretString:username}}'
+            - Name: DB_PASSWORD
+              Value: !If 
+                - CreateNewSecret
+                - !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}'
+                - !Sub '{{resolve:secretsmanager:${ExistingSecretArn}:SecretString:password}}'
+            - Name: JAVA_OPTS
+              Value: !Sub "-Xmx1024m -Xms512m -Ddb.host=${AuroraCluster.Endpoint.Address} -Ddb.port=${PostgresPort} -Ddb.name=${DBName} -Ddb.user={{resolve:secretsmanager:${!If [CreateNewSecret, DatabaseSecret, ExistingSecretArn]}:SecretString:username}} -Ddb.password={{resolve:secretsmanager:${!If [CreateNewSecret, DatabaseSecret, ExistingSecretArn]}:SecretString:password}}"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ECSLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: sysml-v2-api
+
+  ECSExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowRDSAndSecretsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:*
+                Resource: !Sub arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: !If 
+                  - CreateNewSecret
+                  - !Ref DatabaseSecret
+                  - !Ref ExistingSecretArn
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: HTTPSListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: AppService
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          AssignPublicIp: ENABLED
+      LoadBalancers:
+        - ContainerName: app-container
+          ContainerPort: !Ref AppPort
+          TargetGroupArn: !Ref TargetGroup
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Type: application
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VPC
+      Port: !Ref AppPort
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckPath: /
+      HealthCheckPort: !Sub '${AppPort}'
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+      Matcher:
+        HttpCode: 200-299
+
+  HTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: !Ref HttpsPort
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !If
+            - UseExistingCertificate
+            - !Ref ExistingCertificateArn
+            - !Ref NewCertificate
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: !Ref HttpPort
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: !Sub '${HttpsPort}'
+            Host: '#{host}'
+            Path: '/#{path}'
+            Query: '#{query}'
+            StatusCode: HTTP_301
+
+Outputs:
+  ClusterEndpoint:
+    Description: Aurora Cluster Endpoint
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+  LoadBalancerDNS:
+    Description: Application Load Balancer DNS Name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  SwaggerDocsEndpoint:
+    Description: Endpoint for SysML v2 API Swagger Documentation
+    Value: !Sub "https://${ApplicationLoadBalancer.DNSName}/docs/"
+  CertificateArn:
+    Description: ARN of the used or created ACM certificate
+    Value: !If
+      - UseExistingCertificate
+      - !Ref ExistingCertificateArn
+      - !Ref NewCertificate
+  DatabaseSecretArn:
+    Description: ARN of the database credentials secret
+    Value: !If 
+      - CreateNewSecret
+      - !Ref DatabaseSecret
+      - !Ref ExistingSecretArn

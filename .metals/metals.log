@@ -7557,3 +7557,14 @@ WARNING: empty definition using pc, found symbol in pc:  (full report at: /Users
 2025.05.16 11:05:07 INFO  Shutting down server[0m
 2025.05.16 11:05:07 INFO  shutting down Metals[0m
 2025.05.16 11:05:07 INFO  Exiting server[0m
+2025.05.18 17:41:31 INFO  Started: Metals version 1.5.3 in folders '/Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services' for client Visual Studio Code 1.100.1.
+2025.05.18 18:06:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.18 18:06:11 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt
+2025.05.18 18:06:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.18 18:06:16 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.18 18:06:16 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.18 18:06:16 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.18 18:06:16 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.18 18:06:16 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.18 18:06:18 INFO  time: code lens generation in 1.39s
+2025.05.18 18:06:18 INFO  time: code lens generation in 1.39s

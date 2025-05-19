@@ -75,8 +75,6 @@ $ sbt run
 (Server started, use Enter to stop and go back to the console...)
 ```
 
-3. Open a web-browser and go to `localhost:9000/docs/`. This will start to load the application and compile the web-application which may take a few minutes. Once loaded, you will see the Swagger doc for the SysML v2 REST/HTTP API as shown below.
-
-![REST/HTTP API](https://gist.githubusercontent.com/manasbajaj/0635b32fcf42a75eeca79744af953732/raw/0f73c2f3c8464bc36cb9341516bf9bdfb2342163/SysML-v2-REST-HTTP-API-Swagger-Doc.png)
+3. Open a web-browser and go to `localhost:9000/docs/`. This will start to load the application and compile the web-application which may take a few minutes. Once loaded, you will see the Swagger doc for the SysML v2 REST/HTTP API.
 
 4. You can now make REST/HTTP requests to your local SysML v2 API and Services web application either via Swagger doc, or via any REST/HTTP client such as Postman.
