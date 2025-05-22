@@ -55,7 +55,7 @@ Parameters:
   ExistingSecretArn:
     Type: String
     Description: ARN of an existing secret (required if SecretsOption is UseExisting)
-    Default: ''
+    Default: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:dummy'
 
 Conditions:
   CreateNewSecret: !Equals [!Ref SecretsOption, CreateNew]
@@ -237,8 +237,6 @@ Resources:
           SourceSecurityGroupId: !Ref ALBSecurityGroup
       SecurityGroupEgress:
         - IpProtocol: -1
-          FromPort: -1
-          ToPort: -1
           CidrIp: 0.0.0.0/0
 
   ALBSecurityGroup:
@@ -275,7 +273,7 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      Cpu: '256'
+      Cpu: '512'
       Memory: '2048'
       ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
@@ -303,7 +301,10 @@ Resources:
                 - !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}'
                 - !Sub '{{resolve:secretsmanager:${ExistingSecretArn}:SecretString:password}}'
             - Name: JAVA_OPTS
-              Value: !Sub "-Xmx1024m -Xms512m -Ddb.host=${AuroraCluster.Endpoint.Address} -Ddb.port=${PostgresPort} -Ddb.name=${DBName} -Ddb.user={{resolve:secretsmanager:${!If [CreateNewSecret, DatabaseSecret, ExistingSecretArn]}:SecretString:username}} -Ddb.password={{resolve:secretsmanager:${!If [CreateNewSecret, DatabaseSecret, ExistingSecretArn]}:SecretString:password}}"
+              Value: !If
+                - CreateNewSecret
+                - !Sub "-Ddb.host=${AuroraCluster.Endpoint.Address} -Ddb.port=${PostgresPort} -Ddb.name=${DBName} -Ddb.user={{resolve:secretsmanager:${DatabaseSecret}:SecretString:username}} -Ddb.password={{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}"
+                - !Sub "-Ddb.host=${AuroraCluster.Endpoint.Address} -Ddb.port=${PostgresPort} -Ddb.name=${DBName} -Ddb.user={{resolve:secretsmanager:${ExistingSecretArn}:SecretString:username}} -Ddb.password={{resolve:secretsmanager:${ExistingSecretArn}:SecretString:password}}"
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -351,6 +352,17 @@ Resources:
                   - CreateNewSecret
                   - !Ref DatabaseSecret
                   - !Ref ExistingSecretArn
+        - PolicyName: AllowECSExec
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssmmessages:CreateControlChannel
+                  - ssmmessages:CreateDataChannel
+                  - ssmmessages:OpenControlChannel
+                  - ssmmessages:OpenDataChannel
+                Resource: '*'
 
   ECSService:
     Type: AWS::ECS::Service
@@ -361,6 +373,7 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
       DesiredCount: 1
       LaunchType: FARGATE
+      EnableExecuteCommand: true
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets:
@@ -391,14 +404,20 @@ Resources:
       Port: !Ref AppPort
       Protocol: HTTP
       TargetType: ip
+      HealthCheckEnabled: true
       HealthCheckPath: /
       HealthCheckPort: !Sub '${AppPort}'
-      HealthCheckIntervalSeconds: 30
-      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 300
+      HealthCheckTimeoutSeconds: 60
       HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 5
+      UnhealthyThresholdCount: 10
       Matcher:
-        HttpCode: 200-299
+        HttpCode: 200-499
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 600
+        - Key: slow_start.duration_seconds
+          Value: 300
 
   HTTPSListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -441,6 +460,9 @@ Outputs:
   SwaggerDocsEndpoint:
     Description: Endpoint for SysML v2 API Swagger Documentation
     Value: !Sub "https://${ApplicationLoadBalancer.DNSName}/docs/"
+  SysmlRepositoryUrl:
+    Description: SysML v2 Repository API Endpoint
+    Value: !Sub "https://${ApplicationLoadBalancer.DNSName}"
   CertificateArn:
     Description: ARN of the used or created ACM certificate
     Value: !If

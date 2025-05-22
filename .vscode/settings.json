@@ -2,5 +2,9 @@
     "files.watcherExclude": {
         "**/target": true
     },
-    "metals.inlayHints.implicitConversions.enable": true
+    "metals.inlayHints.implicitConversions.enable": true,
+    "yaml.schemas": {
+        "file:///Users/lonniev/.vscode/extensions/atlassian.atlascode-3.8.0/resources/schemas/pipelines-schema.json": "bitbucket-pipelines.yml",
+        "https://d1uauaxba7bl26.cloudfront.net/latest/CloudFormationResourceSpecification.json": "file:///Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/cloudformation-for-sysml2.yaml"
+    }
 }
