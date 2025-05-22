@@ -22,6 +22,14 @@ Parameters:
     Type: String
     Description: Domain name for the application
     Default: 'sysml-v2-api.digitalthread.link'
+  HostedZoneId:
+    Type: String
+    Description: Route 53 Hosted Zone ID for your domain (required for DNS record creation)
+  CreateDNSRecord:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Whether to create a DNS record in Route 53
   CertificateOption:
     Type: String
     Default: New
@@ -62,6 +70,7 @@ Conditions:
   UseExistingSecret: !Equals [!Ref SecretsOption, UseExisting]
   UseExistingCertificate: !Equals [!Ref CertificateOption, Existing]
   CreateNewCertificate: !Equals [!Ref CertificateOption, New]
+  CreateDNSRecord: !Equals [!Ref CreateDNSRecord, "true"]
 
 Resources:
   VPC:
@@ -450,6 +459,19 @@ Resources:
             Query: '#{query}'
             StatusCode: HTTP_301
 
+  # DNS Record for custom domain
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNSRecord
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt ApplicationLoadBalancer.DNSName
+        HostedZoneId: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
+        EvaluateTargetHealth: true
+
 Outputs:
   ClusterEndpoint:
     Description: Aurora Cluster Endpoint
@@ -462,7 +484,10 @@ Outputs:
     Value: !Sub "https://${ApplicationLoadBalancer.DNSName}/docs/"
   SysmlRepositoryUrl:
     Description: SysML v2 Repository API Endpoint
-    Value: !Sub "https://${ApplicationLoadBalancer.DNSName}"
+    Value: !If
+      - CreateDNSRecord
+      - !Sub "https://${DomainName}"
+      - !Sub "https://${ApplicationLoadBalancer.DNSName}"
   CertificateArn:
     Description: ARN of the used or created ACM certificate
     Value: !If

@@ -6,5 +6,6 @@
     "yaml.schemas": {
         "file:///Users/lonniev/.vscode/extensions/atlassian.atlascode-3.8.0/resources/schemas/pipelines-schema.json": "bitbucket-pipelines.yml",
         "https://d1uauaxba7bl26.cloudfront.net/latest/CloudFormationResourceSpecification.json": "file:///Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/cloudformation-for-sysml2.yaml"
-    }
+    },
+    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m -Xlog:disable"
 }

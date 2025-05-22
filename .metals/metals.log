@@ -8144,3 +8144,266 @@ WARNING: Unmatched cancel notification for request id 1
 2025.05.21 21:22:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
 May 21, 2025 10:17:05 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
 INFO: Unsupported notification method: $/setTrace
+2025.05.21 22:22:48 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java
+2025.05.21 22:22:48 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:48 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:49 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:50 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:50 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:50 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+May 21, 2025 10:22:50 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 18
+May 21, 2025 10:22:50 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 19
+2025.05.21 22:22:51 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:51 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:52 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:51 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:55 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:55 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:56 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:56 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:56 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:22:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:01 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:01 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:01 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:01 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+May 21, 2025 10:23:05 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 55
+May 21, 2025 10:23:05 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 56
+May 21, 2025 10:23:05 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 57
+2025.05.21 22:23:05 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:05 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:05 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:05 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:05 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:08 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:09 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java
+2025.05.21 22:23:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:13 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:14 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:17 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:23:28 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java
+2025.05.21 22:23:28 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:28 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:28 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:30 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:31 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:31 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:33 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:33 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:33 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:33 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:33 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:35 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:35 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:35 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:35 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:36 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:36 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:42 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:42 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java
+2025.05.21 22:23:42 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:42 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:42 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:43 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:43 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:43 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:43 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:44 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:45 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:44 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:44 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:45 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:46 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:46 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:50 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:51 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:54 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:54 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:54 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:54 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:54 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:55 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:56 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:58 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:58 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:58 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:58 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:58 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:59 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:59 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:23:59 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:01 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:04 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:08 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:08 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:12 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:12 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:24:12 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:25:48 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java
+2025.05.21 22:25:48 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:48 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:48 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:48 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:48 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/impl/HibernateManager.java. Using fallback presentation compiler.
+2025.05.21 22:25:48 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:49 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:50 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:49 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:49 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:51 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:51 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:52 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:52 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:52 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:52 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:56 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:58 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:25:59 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/data/impl/ExternalDataImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:06 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java
+2025.05.21 22:26:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:06 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:07 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:08 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:09 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:10 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/jpa/manager/JPAManager.java. Using fallback presentation compiler.
+2025.05.21 22:26:11 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:12 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/generated/org/omg/sysml/internal/impl/CommitDataVersionIndexImpl_.java. Using fallback presentation compiler.
+2025.05.21 22:26:20 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:20 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:20 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt
+2025.05.21 22:26:20 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:20 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:20 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:21 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:22 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:22 WARN  Could not find semantic tokens for: file:///Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt
+2025.05.21 22:26:23 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:26 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:28 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/MetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:26:30 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/scaffold.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:39 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:39 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:39 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala
+2025.05.21 22:26:39 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:39 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:40 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:40 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:40 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:41 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:42 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/app/config/impl/JPAMetamodelProvider.java. Using fallback presentation compiler.
+2025.05.21 22:26:44 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:44 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:26:45 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+May 21, 2025 10:26:51 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
+2025.05.21 22:26:58 INFO  Shutting down server
+2025.05.21 22:26:58 INFO  shutting down Metals
+2025.05.21 22:26:58 INFO  Exiting server
+2025.05.21 22:27:55 INFO  Started: Metals version 1.5.3 in folders '/Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services' for client Visual Studio Code 1.100.1.
+2025.05.21 22:27:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:27:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:27:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:27:57 INFO  skipping build import with status 'Failed'
+2025.05.21 22:27:57 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:27:57 WARN  no build target for: /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala
+2025.05.21 22:27:58 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:28:00 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:28:02 INFO  time: code lens generation in 4.65s
+2025.05.21 22:28:02 INFO  time: code lens generation in 4.65s
+May 21, 2025 10:28:04 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
+2025.05.21 22:28:05 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+May 21, 2025 10:28:16 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
+May 21, 2025 10:28:23 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
+2025.05.21 22:29:20 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:36:51 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:36:52 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:36:53 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:36:54 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.05.21 22:36:56 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/project/VersionIdentifiers.scala. Using presentation compiler with project's scala-library version: 3.3.6
+May 21, 2025 10:54:40 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
