@@ -8142,3 +8142,5 @@ WARNING: Unmatched cancel notification for request id 1
 2025.05.21 21:21:59 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
 2025.05.21 21:22:01 INFO  time: code lens generation in 1.09s
 2025.05.21 21:22:03 INFO  no build target found for /Users/lonniev/Development/GitHub/lonniev/SysML-v2-API-Services/build.sbt. Using presentation compiler with project's scala-library version: 3.3.6
+May 21, 2025 10:17:05 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
