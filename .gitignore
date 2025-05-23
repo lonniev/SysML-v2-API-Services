@@ -12,7 +12,7 @@ target
 .bloop
 .metals
 metals.sbt
-.metals/
+.metals/**
 .metals/metals.lock.db
 .metals/metals.log
 .metals/metals.mv.db

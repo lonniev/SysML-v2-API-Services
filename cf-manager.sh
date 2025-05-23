@@ -8,6 +8,8 @@ TEMPLATE_FILE="cloudformation-for-sysml2.yaml"
 CHANGE_SET_NAME="sysml-v2-changes"
 ECR_IMAGE="385275937261.dkr.ecr.us-east-1.amazonaws.com/sysml2-api-services:latest"
 DOMAIN_NAME="sysml-v2-api.digitalthread.link"
+HOSTED_ZONE_ID="Z05323903RWKM79BTU4Q5" # Replace with your actual Route 53 hosted zone ID
+CREATE_DNS_RECORD="true"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -43,6 +45,8 @@ create_changeset() {
       ParameterKey=ECSImage,ParameterValue=$ECR_IMAGE \
       ParameterKey=DBInstanceClass,ParameterValue=db.t3.medium \
       ParameterKey=DomainName,ParameterValue=$DOMAIN_NAME \
+      ParameterKey=HostedZoneId,ParameterValue=$HOSTED_ZONE_ID \
+      ParameterKey=CreateDNSRecord,ParameterValue=$CREATE_DNS_RECORD \
       ParameterKey=CertificateOption,ParameterValue=New \
       ParameterKey=SecretsOption,ParameterValue=CreateNew \
     --capabilities CAPABILITY_IAM \
