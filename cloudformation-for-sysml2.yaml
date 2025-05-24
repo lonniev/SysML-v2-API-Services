@@ -32,6 +32,15 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: Whether to create a DNS record in Route 53
+  EnableCognito:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Enable Cognito authentication for the ALB
+  CognitoDomainPrefix:
+    Type: String
+    Description: Prefix for Cognito domain (must be unique)
+    Default: "sysml-saas-auth"
   CertificateOption:
     Type: String
     Default: New
@@ -73,6 +82,7 @@ Conditions:
   UseExistingCertificate: !Equals [!Ref CertificateOption, Existing]
   CreateNewCertificate: !Equals [!Ref CertificateOption, New]
   CreateDNSRecord: !Equals [!Ref CreateDNSRecord, "true"]
+  EnableCognitoAuth: !Equals [!Ref EnableCognito, "true"]
 
 Resources:
   VPC:
@@ -447,9 +457,23 @@ Resources:
             - UseExistingCertificate
             - !Ref ExistingCertificateArn
             - !Ref NewCertificate
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+      DefaultActions: !If
+        - EnableCognitoAuth
+        - - Type: authenticate-cognito
+            Order: 1
+            AuthenticateCognitoConfig:
+              UserPoolArn: !GetAtt UserPool.Arn
+              UserPoolClientId: !Ref UserPoolClient
+              UserPoolDomain: !Ref CognitoDomainPrefix
+              OnUnauthenticatedRequest: authenticate
+              SessionCookieName: AWSELBAuthSessionCookie
+              SessionTimeout: 3600
+              Scope: "openid email profile"
+          - Type: forward
+            Order: 2
+            TargetGroupArn: !Ref TargetGroup
+        - - Type: forward
+            TargetGroupArn: !Ref TargetGroup
 
   HTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -466,6 +490,63 @@ Resources:
             Path: '/#{path}'
             Query: '#{query}'
             StatusCode: HTTP_301
+
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Condition: EnableCognitoAuth
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-UserPool"
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: EnableCognitoAuth
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub "${AWS::StackName}-ALB-Client"
+      GenerateSecret: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs: 
+        - !If
+          - CreateDNSRecord
+          - !Sub "https://${DomainName}/oauth2/idpresponse"
+          - !Sub "https://${ApplicationLoadBalancer.DNSName}/oauth2/idpresponse"
+      SupportedIdentityProviders:
+        - COGNITO
+      PreventUserExistenceErrors: ENABLED
+
+  # Cognito User Pool Domain
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Condition: EnableCognitoAuth
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref UserPool
 
   # DNS Record for custom domain
   DNSRecord:
@@ -508,3 +589,15 @@ Outputs:
       - CreateNewSecret
       - !Ref DatabaseSecret
       - !Ref ExistingSecretArn
+  CognitoUserPoolId:
+    Condition: EnableCognitoAuth
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+  CognitoUserPoolClientId:
+    Condition: EnableCognitoAuth
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+  CognitoHostedUI:
+    Condition: EnableCognitoAuth
+    Description: Cognito Hosted UI URL
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"

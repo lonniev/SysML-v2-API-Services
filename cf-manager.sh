@@ -10,6 +10,8 @@ ECR_IMAGE="385275937261.dkr.ecr.us-east-1.amazonaws.com/sysml2-api-services:late
 DOMAIN_NAME="sysml-v2-api.digitalthread.link"
 HOSTED_ZONE_ID="Z05323903RWKM79BTU4Q5" # Replace with your actual Route 53 hosted zone ID
 CREATE_DNS_RECORD="true"
+ENABLE_COGNITO="true"
+COGNITO_DOMAIN_PREFIX="sysml-saas-auth"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -29,6 +31,7 @@ show_usage() {
   echo "  stack describe       - Describe the current stack"
   echo "  stack events         - Show stack events"
   echo "  stack outputs        - Show stack outputs"
+  echo "  stack update         - Update the stack directly"
   echo "  stack delete         - Delete the stack"
   echo "  validate             - Validate the CloudFormation template"
   echo "  help                 - Show this help message"
@@ -47,6 +50,8 @@ create_changeset() {
       ParameterKey=DomainName,ParameterValue=$DOMAIN_NAME \
       ParameterKey=HostedZoneId,ParameterValue=$HOSTED_ZONE_ID \
       ParameterKey=CreateDNSRecord,ParameterValue=$CREATE_DNS_RECORD \
+      ParameterKey=EnableCognito,ParameterValue=$ENABLE_COGNITO \
+      ParameterKey=CognitoDomainPrefix,ParameterValue=$COGNITO_DOMAIN_PREFIX \
       ParameterKey=CertificateOption,ParameterValue=New \
       ParameterKey=SecretsOption,ParameterValue=CreateNew \
     --capabilities CAPABILITY_IAM \
@@ -56,6 +61,38 @@ create_changeset() {
     echo -e "${GREEN}Change set creation initiated. Use 'changeset describe' to check status.${NC}"
   else
     echo -e "${RED}Failed to create change set.${NC}"
+  fi
+}
+
+# Function to update stack directly
+update_stack() {
+  echo -e "${YELLOW}WARNING: You are about to update the stack: $STACK_NAME${NC}"
+  read -p "Are you sure you want to proceed? (y/n): " confirm
+  
+  if [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]]; then
+    echo -e "${GREEN}Updating stack: $STACK_NAME...${NC}"
+    aws cloudformation update-stack \
+      --stack-name $STACK_NAME \
+      --template-body file://$TEMPLATE_FILE \
+      --parameters \
+        ParameterKey=ECSImage,ParameterValue=$ECR_IMAGE \
+        ParameterKey=DBInstanceClass,ParameterValue=db.t3.medium \
+        ParameterKey=DomainName,ParameterValue=$DOMAIN_NAME \
+        ParameterKey=HostedZoneId,ParameterValue=$HOSTED_ZONE_ID \
+        ParameterKey=CreateDNSRecord,ParameterValue=$CREATE_DNS_RECORD \
+        ParameterKey=EnableCognito,ParameterValue=$ENABLE_COGNITO \
+        ParameterKey=CognitoDomainPrefix,ParameterValue=$COGNITO_DOMAIN_PREFIX \
+        ParameterKey=CertificateOption,ParameterValue=New \
+        ParameterKey=SecretsOption,ParameterValue=CreateNew \
+      --capabilities CAPABILITY_IAM
+    
+    if [ $? -eq 0 ]; then
+      echo -e "${GREEN}Stack update initiated. Use 'stack describe' to check status.${NC}"
+    else
+      echo -e "${RED}Failed to update stack.${NC}"
+    fi
+  else
+    echo -e "${YELLOW}Stack update cancelled.${NC}"
   fi
 }
 
@@ -154,6 +191,9 @@ case "$1 $2" in
     ;;
   "stack outputs")
     show_stack_outputs
+    ;;
+  "stack update")
+    update_stack
     ;;
   "stack delete")
     delete_stack
