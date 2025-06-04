@@ -5,6 +5,8 @@ import com.typesafe.sbt.packager.docker.Cmd
 import sbt.io.Path.rebase
 import com.amazonaws.regions.{Region, Regions}
 
+import scala.sys.process._
+
 name := """SysML-v2-API-Services"""
 organization := "org.omg"
 
@@ -13,21 +15,69 @@ version := "2025-02"
 javacOptions ++= Seq("-source", "11", "-target", "11", "-Xlint")
 
 enablePlugins(EcrPlugin)
-
-( Docker / packageName ) := "sysml2-api-services"
+( Docker / packageName ) := "sysml-at-your-service-image"
 
 ( Docker / version ) := version.value
 
 Ecr / region           := Region.getRegion(Regions.US_EAST_1)
-Ecr /repositoryName   := (Docker / packageName).value
+Ecr / repositoryName   := (Docker / packageName).value
 
-repositoryTags in Ecr := Seq((Docker / version).value, "latest")
+Ecr / repositoryTags := Seq((Docker / version).value, "latest" )
+
 
 // Create the repository before authentication takes place (optional)
 Ecr / login := ((Ecr / login) dependsOn (Ecr / createRepository)).value
 
 // Authenticate and publish a local Docker image before pushing to ECR
 Ecr / push := ((Ecr / push) dependsOn (Docker / publishLocal, Ecr / login)).value
+
+// after the routine ECR push, we also need to docker tag the image for AWS Marketplace and push that
+// docker tag sysml-at-your-service-image:2025-02 709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:2025-02
+// docker push 709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:2025-02
+
+// Add this to your build.sbt file
+
+// Define a new configuration for marketplace tasks
+lazy val market = taskKey[Unit]("AWS Marketplace operations")
+
+// Define the push task in the market namespace
+lazy val marketPush = taskKey[Unit]("Push to AWS Marketplace ECR")
+
+// AWS Marketplace ECR repository details
+val marketplaceAccountId = "709825985650"
+val marketplaceRepoPath = "sysml-at-your-service"
+val marketplaceRegion = "us-east-1"
+
+// Implementation of the market:push task
+marketPush := {
+  val log = streams.value.log
+  val sourceImage = (Docker / packageName).value + ":" + (Docker / version).value
+  val targetImage = s"$marketplaceAccountId.dkr.ecr.$marketplaceRegion.amazonaws.com/$marketplaceRepoPath/${(Docker / packageName).value}:${(Docker / version).value}"
+  
+  // First ensure the image is pushed to our ECR
+  (Ecr / push).value
+  
+  log.info(s"Tagging $sourceImage as $targetImage")
+  val tagCmd = Seq("docker", "tag", sourceImage, targetImage)
+  val tagResult = Process(tagCmd).!
+  
+  if (tagResult != 0) {
+    throw new RuntimeException(s"Failed to tag image: $sourceImage as $targetImage")
+  }
+  
+  log.info(s"Pushing $targetImage to AWS Marketplace ECR")
+  val pushCmd = Seq("docker", "push", targetImage)
+  val pushResult = Process(pushCmd).!
+  
+  if (pushResult != 0) {
+    throw new RuntimeException(s"Failed to push image to AWS Marketplace ECR: $targetImage")
+  }
+  
+  log.info(s"Successfully pushed $targetImage to AWS Marketplace ECR")
+}
+
+// Add the task to the market namespace
+market / push := marketPush.value
 
 dockerExposedPorts ++= Seq(9000)
 
