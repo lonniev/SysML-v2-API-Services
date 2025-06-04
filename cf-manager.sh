@@ -6,7 +6,7 @@
 STACK_NAME="sysml-v2-stack"
 TEMPLATE_FILE="cloudformation-for-sysml2.yaml"
 CHANGE_SET_NAME="sysml-v2-changes"
-ECR_IMAGE="385275937261.dkr.ecr.us-east-1.amazonaws.com/sysml2-api-services:latest"
+ECR_IMAGE="709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:2025-02"
 DOMAIN_NAME="sysml-v2-api.digitalthread.link"
 HOSTED_ZONE_ID="Z05323903RWKM79BTU4Q5" # Replace with your actual Route 53 hosted zone ID
 CREATE_DNS_RECORD="true"

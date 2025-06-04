@@ -20,6 +20,7 @@ Parameters:
   ECSImage:
     Type: String
     Description: Docker image for ECS task (e.g., from ECR)
+    Default: '709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:2025-02'
   DomainName:
     Type: String
     Description: Domain name for the application
