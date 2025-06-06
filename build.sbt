@@ -10,7 +10,7 @@ import scala.sys.process._
 name := """SysML-v2-API-Services"""
 organization := "org.omg"
 
-version := "2025-02"
+version := "0.1.0-20250606.1"
 
 javacOptions ++= Seq("-source", "11", "-target", "11", "-Xlint")
 
@@ -35,21 +35,27 @@ Ecr / push := ((Ecr / push) dependsOn (Docker / publishLocal, Ecr / login)).valu
 // docker tag sysml-at-your-service-image:2025-02 709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:2025-02
 // docker push 709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:2025-02
 
-// Add this to your build.sbt file
+// Define a custom command for market operations
+commands += Command.args("market", "<command>") { (state, args) =>
+  args.headOption match {
+    case Some("update") =>
+      "marketUpdate" :: state
+    case _ =>
+      println("Usage: marketUpdate")
+      state
+  }
+}
 
-// Define a new configuration for marketplace tasks
-lazy val market = taskKey[Unit]("AWS Marketplace operations")
-
-// Define the push task in the market namespace
-lazy val marketPush = taskKey[Unit]("Push to AWS Marketplace ECR")
+// Define the update task for AWS Marketplace
+val marketUpdate = taskKey[Unit]("Update AWS Marketplace ECR with latest image")
 
 // AWS Marketplace ECR repository details
 val marketplaceAccountId = "709825985650"
 val marketplaceRepoPath = "sysml-at-your-service"
 val marketplaceRegion = "us-east-1"
 
-// Implementation of the market:push task
-marketPush := {
+// Implementation of the market:update task
+marketUpdate := {
   val log = streams.value.log
   val sourceImage = (Docker / packageName).value + ":" + (Docker / version).value
   val targetImage = s"$marketplaceAccountId.dkr.ecr.$marketplaceRegion.amazonaws.com/$marketplaceRepoPath/${(Docker / packageName).value}:${(Docker / version).value}"
@@ -76,19 +82,18 @@ marketPush := {
   log.info(s"Successfully pushed $targetImage to AWS Marketplace ECR")
 }
 
-// Add the task to the market namespace
-market / push := marketPush.value
-
 dockerExposedPorts ++= Seq(9000)
 
 val dockerSettings: Seq[Setting[_]] = Seq(
 
-  dockerBaseImage := "openjdk:11-jdk-slim",
+  // has to be a Ubuntu or Debian image to offer useradd
+  // has to offer JDK 11 without CVE CVE-2022-22965
+  dockerBaseImage := "mcr.microsoft.com/openjdk/jdk:11-ubuntu",
 
   // in the shell that runs SBT (or in a GHA job), the devops user
   // has to authenticate the shell with docker
   // echo $GITHUB_TOKEN | docker login ghcr.io -u lonniev --password-stdin
-  Docker / version.withRank(KeyRanks.Invisible)   := "2025-02",
+  Docker / version.withRank(KeyRanks.Invisible)   := version.value,
   dockerUpdateLatest.withRank(KeyRanks.Invisible) := true,
 
   // add a packaging path mapper that leads to copying the resources into the image's conf directory
@@ -130,17 +135,23 @@ lazy val root = (project in file(".")).
     dockerSettings
   )
 
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.18"
 
 libraryDependencies += guice
-libraryDependencies += "org.hibernate" % "hibernate-core" % "5.4.1.Final"
-libraryDependencies += "org.hibernate" % "hibernate-jpamodelgen" % "5.4.1.Final"
-libraryDependencies += "org.postgresql" % "postgresql" % "42.2.5"
-libraryDependencies += "com.fasterxml.jackson.core" % "jackson-annotations" % "2.9.8"
-libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.8"
-libraryDependencies += "com.fasterxml.jackson.datatype" % "jackson-datatype-hibernate5" % "2.9.8"
+libraryDependencies += "org.hibernate" % "hibernate-core" % "5.4.33.Final"
+libraryDependencies += "org.hibernate" % "hibernate-jpamodelgen" % "5.4.33.Final"
+libraryDependencies += "org.postgresql" % "postgresql" % "42.7.2"
+libraryDependencies += "com.fasterxml.jackson.core" % "jackson-annotations" % "2.12.7"
+libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.12.7"
+libraryDependencies += "com.fasterxml.jackson.datatype" % "jackson-datatype-hibernate5" % "2.12.7"
 libraryDependencies += "io.swagger" % "swagger-play2_2.12" % "1.6.0"
-libraryDependencies += "org.reflections" % "reflections" % "0.9.10"
+libraryDependencies += "org.reflections" % "reflections" % "0.10.2"
+
+// earlier versions of spring-beans have a CVE (CVE-2022-22965)
+libraryDependencies += "org.springframework" % "spring-beans" % "5.3.18"
+
+// Add this to force this version for all transitive dependencies
+dependencyOverrides += "org.springframework" % "spring-beans" % "5.3.18"
 
 javacOptions ++= Seq("-s", "app")
 
