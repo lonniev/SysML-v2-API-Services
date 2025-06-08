@@ -6,12 +6,14 @@
 STACK_NAME="sysml-v2-stack"
 TEMPLATE_FILE="cloudformation-for-sysml2.yaml"
 CHANGE_SET_NAME="sysml-v2-changes"
-ECR_IMAGE="709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:2025-02"
+ECR_IMAGE="709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:0.1.0-20250606.1"
 DOMAIN_NAME="sysml-v2-api.digitalthread.link"
 HOSTED_ZONE_ID="Z05323903RWKM79BTU4Q5" # Replace with your actual Route 53 hosted zone ID
 CREATE_DNS_RECORD="true"
 ENABLE_COGNITO="true"
 COGNITO_DOMAIN_PREFIX="sysml-saas-auth"
+ADMIN_USERNAME="sysml2_admin"
+ADMIN_EMAIL="admin@example.com" # Replace with your actual admin email
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -52,6 +54,8 @@ create_changeset() {
       ParameterKey=CreateDNSRecord,ParameterValue=$CREATE_DNS_RECORD \
       ParameterKey=EnableCognito,ParameterValue=$ENABLE_COGNITO \
       ParameterKey=CognitoDomainPrefix,ParameterValue=$COGNITO_DOMAIN_PREFIX \
+      ParameterKey=AdminUsername,ParameterValue=$ADMIN_USERNAME \
+      ParameterKey=AdminEmail,ParameterValue=$ADMIN_EMAIL \
       ParameterKey=CertificateOption,ParameterValue=New \
       ParameterKey=SecretsOption,ParameterValue=CreateNew \
     --capabilities CAPABILITY_IAM \
@@ -82,6 +86,8 @@ update_stack() {
         ParameterKey=CreateDNSRecord,ParameterValue=$CREATE_DNS_RECORD \
         ParameterKey=EnableCognito,ParameterValue=$ENABLE_COGNITO \
         ParameterKey=CognitoDomainPrefix,ParameterValue=$COGNITO_DOMAIN_PREFIX \
+        ParameterKey=AdminUsername,ParameterValue=$ADMIN_USERNAME \
+        ParameterKey=AdminEmail,ParameterValue=$ADMIN_EMAIL \
         ParameterKey=CertificateOption,ParameterValue=New \
         ParameterKey=SecretsOption,ParameterValue=CreateNew \
       --capabilities CAPABILITY_IAM

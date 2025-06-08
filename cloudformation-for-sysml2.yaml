@@ -20,7 +20,7 @@ Parameters:
   ECSImage:
     Type: String
     Description: Docker image for ECS task (e.g., from ECR)
-    Default: '709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:2025-02'
+    Default: '709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:0.1.0-20250606.1'
   DomainName:
     Type: String
     Description: Domain name for the application
@@ -42,6 +42,13 @@ Parameters:
     Type: String
     Description: Prefix for Cognito domain (must be unique)
     Default: "sysml-saas-auth"
+  AdminUsername:
+    Type: String
+    Default: "sysml2_admin"
+    Description: Username for the initial admin user
+  AdminEmail:
+    Type: String
+    Description: Email address for the initial admin user
   CertificateOption:
     Type: String
     Default: New
@@ -561,6 +568,83 @@ Resources:
         DNSName: !GetAtt ApplicationLoadBalancer.DNSName
         HostedZoneId: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
         EvaluateTargetHealth: true
+        
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Condition: EnableCognitoAuth
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-UserPool"
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+        InviteMessageTemplate:
+          EmailMessage: "Your SysML v2 API username is {username} and temporary password is {####}. Please login and change your password."
+          EmailSubject: "Your SysML v2 API temporary password"
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: EnableCognitoAuth
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub "${AWS::StackName}-ALB-Client"
+      GenerateSecret: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs: 
+        - !If
+          - CreateDNSRecord
+          - !Sub "https://${DomainName}/oauth2/idpresponse"
+          - !Sub "https://${ApplicationLoadBalancer.DNSName}/oauth2/idpresponse"
+      SupportedIdentityProviders:
+        - COGNITO
+      PreventUserExistenceErrors: ENABLED
+
+  # Cognito User Pool Domain
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Condition: EnableCognitoAuth
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref UserPool
+
+  # Initial Admin User
+  AdminUser:
+    Type: AWS::Cognito::UserPoolUser
+    Condition: EnableCognitoAuth
+    Properties:
+      Username: !Ref AdminUsername
+      UserPoolId: !Ref UserPool
+      DesiredDeliveryMediums:
+        - EMAIL
+      ForceAliasCreation: true
+      UserAttributes:
+        - Name: email
+          Value: !Ref AdminEmail
+        - Name: email_verified
+          Value: "true"
+      TemporaryPassword: !Ref DBPassword
 
 Outputs:
   ClusterEndpoint:
@@ -578,6 +662,14 @@ Outputs:
       - CreateDNSRecord
       - !Sub "https://${DomainName}"
       - !Sub "https://${ApplicationLoadBalancer.DNSName}"
+  CognitoUserPoolId:
+    Condition: EnableCognitoAuth
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+  CognitoLoginUrl:
+    Condition: EnableCognitoAuth
+    Description: Cognito Login URL
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/login"
   CertificateArn:
     Description: ARN of the used or created ACM certificate
     Value: !If
