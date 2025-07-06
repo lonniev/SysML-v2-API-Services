@@ -7,23 +7,23 @@ Parameters:
   DBName:
     Type: String
     Default: sysml2
-    Description: Name of the initial database
+    Description: Name of the initial database (leave as sysml2 unless you have a specific reason to change it)
   DBPassword:
     Type: String
     NoEcho: true
     Default: mysecretpassword
-    Description: Password for the database (stored in Secrets Manager)
+    Description: Password for the database (stored in Secrets Manager) (leave as mysecretpassword unless you have a specific reason to change it)
   DBInstanceClass:
     Type: String
     Default: db.t3.medium
-    Description: DB instance class
+    Description: DB instance class (db.t3.medium is a good starting point)
   ECSImage:
     Type: String
-    Description: Docker image for ECS task (e.g., from ECR)
+    Description: Docker image for the SysMLv2 API server (leave as is stated)
     Default: '709825985650.dkr.ecr.us-east-1.amazonaws.com/sysml-at-your-service/sysml-at-your-service-image:0.1.0-20250606.1'
   DomainName:
     Type: String
-    Description: Domain name for the application
+    Description: Domain name for the application (must change to your own DNS domain)
     Default: 'sysml-v2-api.digitalthread.link'
   HostedZoneId:
     Type: String
@@ -32,28 +32,28 @@ Parameters:
     Type: String
     Default: "true"
     AllowedValues: ["true", "false"]
-    Description: Whether to create a DNS record in Route 53
+    Description: Whether to create a DNS record in Route 53 using the provided Hosted Zone ID and Domain Name
   EnableCognito:
     Type: String
     Default: "true"
     AllowedValues: ["true", "false"]
-    Description: Enable Cognito authentication for the ALB
+    Description: Enable Cognito authentication for the ALB (leave as true)
   CognitoDomainPrefix:
     Type: String
-    Description: Prefix for Cognito domain (must be unique)
+    Description: Prefix for Cognito domain (must be unique) and changed to your own prefix
     Default: "sysml-saas-auth"
   AdminUsername:
     Type: String
     Default: "sysml2_admin"
-    Description: Username for the initial admin user
+    Description: Username for the initial admin user (leave as sysml2_admin)
   AdminEmail:
     Type: String
-    Description: Email address for the initial admin user
+    Description: Email address for the initial admin user (enter your admin's own real email address). Necessary to receive the initial password.
   CertificateOption:
     Type: String
     Default: New
     AllowedValues: [Existing, New]
-    Description: Choose to use an existing ACM certificate or request a new one
+    Description: Choose to use an existing ACM certificate or request a new one (recommended to use New)
   ExistingCertificateArn:
     Type: String
     Description: ARN of an existing ACM certificate (required if CertificateOption is Existing)
@@ -61,24 +61,24 @@ Parameters:
   HttpPort:
     Type: Number
     Default: 80
-    Description: Port for HTTP listener (external ALB)
+    Description: Port for HTTP listener (external ALB) (leave as 80)
   HttpsPort:
     Type: Number
     Default: 443
-    Description: Port for HTTPS listener (external ALB)
+    Description: Port for HTTPS listener (external ALB) (leave as 443)
   AppPort:
     Type: Number
     Default: 9000
-    Description: Port for application container (internal)
+    Description: Port for application container (internal) (leave as 9000)
   PostgresPort:
     Type: Number
     Default: 5432
-    Description: Port for PostgreSQL database (internal)
+    Description: Port for PostgreSQL database (internal) (leave as 5432)
   SecretsOption:
     Type: String
     Default: CreateNew
     AllowedValues: [CreateNew, UseExisting]
-    Description: Choose to create a new secret or use an existing one for database credentials
+    Description: Choose to create a new secret or use an existing one for database credentials (recommended to use CreateNew)
   ExistingSecretArn:
     Type: String
     Description: ARN of an existing secret (required if SecretsOption is UseExisting)
