@@ -42,6 +42,10 @@ Parameters:
     Type: String
     Description: Prefix for Cognito domain (must be unique) and changed to your own prefix
     Default: "sysml-saas-auth"
+  CognitoUserLimit:
+    Type: Number
+    Default: 5
+    Description: Maximum number of users allowed in the Cognito User Pool
   AdminUsername:
     Type: String
     Default: "sysml2_admin"
@@ -568,6 +572,73 @@ Resources:
         DNSName: !GetAtt ApplicationLoadBalancer.DNSName
         HostedZoneId: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
         EvaluateTargetHealth: true
+
+  # Lambda function for Cognito PreSignUp trigger
+  CognitoPreSignUpLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: EnableCognitoAuth
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoUserPoolAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:ListUsers
+                Resource: !Sub 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*'
+
+  CognitoPreSignUpLambda:
+    Type: AWS::Lambda::Function
+    Condition: EnableCognitoAuth
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-cognito-presignup'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt CognitoPreSignUpLambdaRole.Arn
+      Environment:
+        Variables:
+          USER_LIMIT: !Ref CognitoUserLimit
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          
+          def lambda_handler(event, context):
+              cognito = boto3.client('cognito-idp')
+              user_pool_id = event['userPoolId']
+              user_limit = int(os.environ['USER_LIMIT'])
+              
+              try:
+                  response = cognito.list_users(UserPoolId=user_pool_id)
+                  current_user_count = len(response['Users'])
+                  
+                  if current_user_count >= user_limit:
+                      raise Exception(f'User limit of {user_limit} has been reached')
+                  
+                  return event
+              except Exception as e:
+                  print(f'Error: {str(e)}')
+                  raise e
+
+  CognitoPreSignUpLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: EnableCognitoAuth
+    Properties:
+      FunctionName: !Ref CognitoPreSignUpLambda
+      Action: lambda:InvokeFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
         
   # Cognito User Pool
   UserPool:
@@ -596,6 +667,8 @@ Resources:
           RequireNumbers: true
           RequireSymbols: true
           RequireUppercase: true
+      LambdaConfig:
+        PreSignUp: !GetAtt CognitoPreSignUpLambda.Arn
 
   # Cognito User Pool Client
   UserPoolClient:
