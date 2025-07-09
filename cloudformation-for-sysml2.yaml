@@ -830,7 +830,6 @@ Resources:
           Value: !Ref AdminEmail
         - Name: email_verified
           Value: "true"
-      TemporaryPassword: !Ref DBPassword
 
 Outputs:
   ClusterEndpoint:
