@@ -780,8 +780,6 @@ Resources:
           RequireNumbers: true
           RequireSymbols: true
           RequireUppercase: true
-      LambdaConfig:
-        PreSignUp: !GetAtt CognitoPreSignUpLambda.Arn
 
   # Cognito User Pool Client
   UserPoolClient:
@@ -815,21 +813,106 @@ Resources:
       Domain: !Ref CognitoDomainPrefix
       UserPoolId: !Ref UserPool
 
-  # Initial Admin User
-  AdminUser:
-    Type: AWS::Cognito::UserPoolUser
+  # Lambda function to create admin user
+  AdminUserCreatorRole:
+    Type: AWS::IAM::Role
     Condition: EnableCognitoAuth
     Properties:
-      Username: !Ref AdminUsername
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoAdminAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminDeleteUser
+                  - cognito-idp:AdminGetUser
+                Resource: !GetAtt UserPool.Arn
+
+  AdminUserCreatorLambda:
+    Type: AWS::Lambda::Function
+    Condition: EnableCognitoAuth
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-admin-user-creator'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt AdminUserCreatorRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          
+          def lambda_handler(event, context):
+              cognito = boto3.client('cognito-idp')
+              
+              try:
+                  if event['RequestType'] == 'Create':
+                      user_pool_id = event['ResourceProperties']['UserPoolId']
+                      email = event['ResourceProperties']['Email']
+                      
+                      # Check if user already exists
+                      try:
+                          cognito.admin_get_user(
+                              UserPoolId=user_pool_id,
+                              Username=email
+                          )
+                          print(f'User {email} already exists, skipping creation')
+                      except cognito.exceptions.UserNotFoundException:
+                          # User doesn't exist, create it
+                          cognito.admin_create_user(
+                              UserPoolId=user_pool_id,
+                              Username=email,
+                              UserAttributes=[
+                                  {'Name': 'email', 'Value': email},
+                                  {'Name': 'email_verified', 'Value': 'true'}
+                              ],
+                              DesiredDeliveryMediums=['EMAIL'],
+                              ForceAliasCreation=True
+                          )
+                          print(f'User {email} created successfully')
+                      
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {'Username': email})
+                  
+                  elif event['RequestType'] == 'Delete':
+                      user_pool_id = event['ResourceProperties']['UserPoolId']
+                      email = event['ResourceProperties']['Email']
+                      
+                      try:
+                          cognito.admin_delete_user(
+                              UserPoolId=user_pool_id,
+                              Username=email
+                          )
+                      except:
+                          pass
+                      
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      
+              except Exception as e:
+                  print(f'Error: {str(e)}')
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  AdminUser:
+    Type: AWS::CloudFormation::CustomResource
+    Condition: EnableCognitoAuth
+    Properties:
+      ServiceToken: !GetAtt AdminUserCreatorLambda.Arn
       UserPoolId: !Ref UserPool
-      DesiredDeliveryMediums:
-        - EMAIL
-      ForceAliasCreation: true
-      UserAttributes:
-        - Name: email
-          Value: !Ref AdminEmail
-        - Name: email_verified
-          Value: "true"
+      Username: !Ref AdminUsername
+      Email: !Ref AdminEmail
 
 Outputs:
   ClusterEndpoint:
