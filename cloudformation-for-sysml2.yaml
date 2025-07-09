@@ -46,6 +46,10 @@ Parameters:
     Type: Number
     Default: 5
     Description: Maximum number of users allowed in the Cognito User Pool
+  MarketplaceProductCode:
+    Type: String
+    Description: AWS Marketplace Product Code for entitlement checking
+    Default: ""
   AdminUsername:
     Type: String
     Default: "sysml2_admin"
@@ -95,6 +99,7 @@ Conditions:
   CreateNewCertificate: !Equals [!Ref CertificateOption, New]
   CreateDNSRecord: !Equals [!Ref CreateDNSRecord, "true"]
   EnableCognitoAuth: !Equals [!Ref EnableCognito, "true"]
+  EnableMarketplaceCheck: !Not [!Equals [!Ref MarketplaceProductCode, ""]]
 
 Resources:
   VPC:
@@ -572,6 +577,114 @@ Resources:
         DNSName: !GetAtt ApplicationLoadBalancer.DNSName
         HostedZoneId: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
         EvaluateTargetHealth: true
+
+  # Lambda function for Marketplace entitlement checking
+  MarketplaceEntitlementLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: EnableMarketplaceCheck
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MarketplaceAndECSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - aws-marketplace:GetEntitlements
+                  - ecs:UpdateService
+                  - ecs:DescribeServices
+                Resource: '*'
+
+  MarketplaceEntitlementLambda:
+    Type: AWS::Lambda::Function
+    Condition: EnableMarketplaceCheck
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-marketplace-entitlement-check'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt MarketplaceEntitlementLambdaRole.Arn
+      Environment:
+        Variables:
+          PRODUCT_CODE: !Ref MarketplaceProductCode
+          ECS_CLUSTER: !Ref ECSCluster
+          ECS_SERVICE: !Ref ECSService
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          
+          def lambda_handler(event, context):
+              marketplace = boto3.client('marketplace-entitlement')
+              ecs = boto3.client('ecs')
+              
+              product_code = os.environ['PRODUCT_CODE']
+              cluster_name = os.environ['ECS_CLUSTER']
+              service_name = os.environ['ECS_SERVICE']
+              
+              try:
+                  # Check entitlements
+                  response = marketplace.get_entitlements(ProductCode=product_code)
+                  has_entitlement = len(response.get('Entitlements', [])) > 0
+                  
+                  # Get current service status
+                  service_response = ecs.describe_services(
+                      cluster=cluster_name,
+                      services=[service_name]
+                  )
+                  
+                  current_count = service_response['services'][0]['desiredCount']
+                  
+                  if has_entitlement and current_count == 0:
+                      # Resume service
+                      ecs.update_service(
+                          cluster=cluster_name,
+                          service=service_name,
+                          desiredCount=1
+                      )
+                      print('Service resumed - valid entitlement found')
+                  elif not has_entitlement and current_count > 0:
+                      # Suspend service
+                      ecs.update_service(
+                          cluster=cluster_name,
+                          service=service_name,
+                          desiredCount=0
+                      )
+                      print('Service suspended - no valid entitlement')
+                  
+                  return {'statusCode': 200, 'body': json.dumps('Entitlement check completed')}
+              except Exception as e:
+                  print(f'Error: {str(e)}')
+                  raise e
+
+  MarketplaceEntitlementSchedule:
+    Type: AWS::Events::Rule
+    Condition: EnableMarketplaceCheck
+    Properties:
+      Description: 'Trigger marketplace entitlement check every hour'
+      ScheduleExpression: 'rate(1 hour)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt MarketplaceEntitlementLambda.Arn
+          Id: 'MarketplaceEntitlementTarget'
+
+  MarketplaceEntitlementLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: EnableMarketplaceCheck
+    Properties:
+      FunctionName: !Ref MarketplaceEntitlementLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MarketplaceEntitlementSchedule.Arn
 
   # Lambda function for Cognito PreSignUp trigger
   CognitoPreSignUpLambdaRole:
