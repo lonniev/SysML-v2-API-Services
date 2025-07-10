@@ -482,7 +482,7 @@ Resources:
             AuthenticateCognitoConfig:
               UserPoolArn: !GetAtt UserPool.Arn
               UserPoolClientId: !Ref UserPoolClient
-              UserPoolDomain: !Ref CognitoDomainPrefix
+              UserPoolDomain: !Sub "${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
               OnUnauthenticatedRequest: authenticate
               SessionCookieName: AWSELBAuthSessionCookie
               SessionTimeout: 3600
