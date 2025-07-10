@@ -50,10 +50,7 @@ Parameters:
     Type: String
     Description: AWS Marketplace Product Code for entitlement checking
     Default: ""
-  WelcomeBannerHtml:
-    Type: String
-    Description: Custom HTML content for the login page banner (optional)
-    Default: '<div class="banner-customizable"><h4>Welcome to SysML v2 API Service</h4><p>Need help getting started? Visit our <a href="https://services.digitalthread.link" target="_blank"> site</a> for tutorials and guides.</p></div>'
+
   AdminUsername:
     Type: String
     Default: "sysml2_admin"
@@ -104,7 +101,6 @@ Conditions:
   CreateDNSRecord: !Equals [!Ref CreateDNSRecord, "true"]
   EnableCognitoAuth: !Equals [!Ref EnableCognito, "true"]
   EnableMarketplaceCheck: !Not [!Equals [!Ref MarketplaceProductCode, ""]]
-  CustomizeUI: !And [!Equals [!Ref EnableCognito, "true"], !Not [!Equals [!Ref WelcomeBannerHtml, ""]]]
 
 Resources:
   VPC:
@@ -817,32 +813,6 @@ Resources:
     Properties:
       Domain: !Ref CognitoDomainPrefix
       UserPoolId: !Ref UserPool
-
-  # Cognito UI Customization
-  UserPoolUICustomization:
-    Type: AWS::Cognito::UserPoolUICustomizationAttachment
-    Condition: CustomizeUI
-    DependsOn: UserPoolDomain
-    Properties:
-      UserPoolId: !Ref UserPool
-      ClientId: ALL
-      CSS: |
-        .banner-customizable {
-          background-color: #f8f9fa;
-          border: 1px solid #dee2e6;
-          border-radius: 0.375rem;
-          padding: 1rem;
-          margin-bottom: 1rem;
-          text-align: center;
-        }
-        .banner-customizable a {
-          color: #0d6efd;
-          text-decoration: none;
-        }
-        .banner-customizable a:hover {
-          text-decoration: underline;
-        }
-      HTML: !Ref WelcomeBannerHtml
 
   # Lambda function to create admin user
   AdminUserCreatorRole:
