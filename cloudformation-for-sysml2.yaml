@@ -27,7 +27,8 @@ Parameters:
     Default: 'sysml-v2-api.digitalthread.link'
   HostedZoneId:
     Type: String
-    Description: Route 53 Hosted Zone ID for your domain (required for DNS record creation)
+    Description: Route 53 Hosted Zone ID for your domain (leave empty to auto-discover from domain name)
+    Default: ""
   CreateDNSRecord:
     Type: String
     Default: "true"
@@ -58,6 +59,13 @@ Parameters:
   AdminEmail:
     Type: String
     Description: Email address for the initial admin user (enter your admin's own real email address). Necessary to receive the initial password.
+  AdminPassword:
+    Type: String
+    NoEcho: true
+    Description: Password for the initial admin user (leave empty to use temporary password via email). Resets any existing password.
+    Default: ""
+    MinLength: 0
+    MaxLength: 256
   CertificateOption:
     Type: String
     Default: New
@@ -101,6 +109,8 @@ Conditions:
   CreateDNSRecord: !Equals [!Ref CreateDNSRecord, "true"]
   EnableCognitoAuth: !Equals [!Ref EnableCognito, "true"]
   EnableMarketplaceCheck: !Not [!Equals [!Ref MarketplaceProductCode, ""]]
+  AutoDiscoverHostedZone: !And [!Equals [!Ref CreateDNSRecord, "true"], !Equals [!Ref HostedZoneId, ""]]
+  SetPermanentPassword: !Not [!Equals [!Ref AdminPassword, ""]]
 
 Resources:
   VPC:
@@ -566,12 +576,95 @@ Resources:
       Domain: !Ref CognitoDomainPrefix
       UserPoolId: !Ref UserPool
 
+  # Lambda function to discover HostedZoneId
+  HostedZoneDiscoveryRole:
+    Type: AWS::IAM::Role
+    Condition: AutoDiscoverHostedZone
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: Route53Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - route53:ListHostedZones
+                  - route53:GetHostedZone
+                Resource: '*'
+
+  HostedZoneDiscoveryLambda:
+    Type: AWS::Lambda::Function
+    Condition: AutoDiscoverHostedZone
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-hosted-zone-discovery'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt HostedZoneDiscoveryRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          
+          def lambda_handler(event, context):
+              route53 = boto3.client('route53')
+              
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      domain_name = event['ResourceProperties']['DomainName']
+                      
+                      # Extract base domain (e.g., digitalthread.link from sysml-v2-api.digitalthread.link)
+                      parts = domain_name.split('.')
+                      if len(parts) >= 2:
+                          base_domain = '.'.join(parts[-2:]) + '.'
+                      else:
+                          base_domain = domain_name + '.'
+                      
+                      # List hosted zones and find matching one
+                      response = route53.list_hosted_zones()
+                      
+                      for zone in response['HostedZones']:
+                          if zone['Name'] == base_domain:
+                              hosted_zone_id = zone['Id'].split('/')[-1]
+                              cfnresponse.send(event, context, cfnresponse.SUCCESS, 
+                                             {'HostedZoneId': hosted_zone_id})
+                              return
+                      
+                      # If no zone found, return error
+                      cfnresponse.send(event, context, cfnresponse.FAILED, 
+                                     {}, f'No hosted zone found for domain {base_domain}')
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      
+              except Exception as e:
+                  print(f'Error: {str(e)}')
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  HostedZoneDiscovery:
+    Type: AWS::CloudFormation::CustomResource
+    Condition: AutoDiscoverHostedZone
+    Properties:
+      ServiceToken: !GetAtt HostedZoneDiscoveryLambda.Arn
+      DomainName: !Ref DomainName
+
   # DNS Record for custom domain
   DNSRecord:
     Type: AWS::Route53::RecordSet
     Condition: CreateDNSRecord
     Properties:
-      HostedZoneId: !Ref HostedZoneId
+      HostedZoneId: !If
+        - AutoDiscoverHostedZone
+        - !GetAtt HostedZoneDiscovery.HostedZoneId
+        - !Ref HostedZoneId
       Name: !Ref DomainName
       Type: A
       AliasTarget:
@@ -838,6 +931,7 @@ Resources:
                   - cognito-idp:AdminCreateUser
                   - cognito-idp:AdminDeleteUser
                   - cognito-idp:AdminGetUser
+                  - cognito-idp:AdminSetUserPassword
                 Resource: !GetAtt UserPool.Arn
 
   AdminUserCreatorLambda:
@@ -861,27 +955,63 @@ Resources:
                   if event['RequestType'] == 'Create':
                       user_pool_id = event['ResourceProperties']['UserPoolId']
                       email = event['ResourceProperties']['Email']
+                      password = event['ResourceProperties'].get('Password', '')
                       
                       # Check if user already exists
+                      user_exists = False
                       try:
                           cognito.admin_get_user(
                               UserPoolId=user_pool_id,
                               Username=email
                           )
-                          print(f'User {email} already exists, skipping creation')
+                          user_exists = True
+                          print(f'User {email} already exists')
+                          
+                          # If password provided, update existing user's password
+                          if password:
+                              cognito.admin_set_user_password(
+                                  UserPoolId=user_pool_id,
+                                  Username=email,
+                                  Password=password,
+                                  Permanent=True
+                              )
+                              print(f'Updated password for existing user {email}')
+                          
                       except cognito.exceptions.UserNotFoundException:
+                          user_exists = False
+                      
+                      if not user_exists:
                           # User doesn't exist, create it
-                          cognito.admin_create_user(
-                              UserPoolId=user_pool_id,
-                              Username=email,
-                              UserAttributes=[
+                          create_params = {
+                              'UserPoolId': user_pool_id,
+                              'Username': email,
+                              'UserAttributes': [
                                   {'Name': 'email', 'Value': email},
                                   {'Name': 'email_verified', 'Value': 'true'}
                               ],
-                              DesiredDeliveryMediums=['EMAIL'],
-                              ForceAliasCreation=True
-                          )
-                          print(f'User {email} created successfully')
+                              'ForceAliasCreation': True
+                          }
+                          
+                          # If password provided, suppress email and set permanent password
+                          if password:
+                              create_params['MessageAction'] = 'SUPPRESS'
+                              create_params['TemporaryPassword'] = password
+                          else:
+                              create_params['DesiredDeliveryMediums'] = ['EMAIL']
+                          
+                          cognito.admin_create_user(**create_params)
+                          
+                          # If password provided, set it as permanent
+                          if password:
+                              cognito.admin_set_user_password(
+                                  UserPoolId=user_pool_id,
+                                  Username=email,
+                                  Password=password,
+                                  Permanent=True
+                              )
+                              print(f'User {email} created with permanent password')
+                          else:
+                              print(f'User {email} created with temporary password via email')
                       
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, {'Username': email})
                   
@@ -914,6 +1044,7 @@ Resources:
       UserPoolId: !Ref UserPool
       Username: !Ref AdminUsername
       Email: !Ref AdminEmail
+      Password: !Ref AdminPassword
 
 Outputs:
   ClusterEndpoint:
@@ -931,6 +1062,9 @@ Outputs:
       - CreateDNSRecord
       - !Sub "https://${DomainName}"
       - !Sub "https://${ApplicationLoadBalancer.DNSName}"
+  DnsHostedZoneId:
+    Description: Route 53 Hosted Zone ID for your domain (entered or discovered)
+    Value: !Ref HostedZoneId      
   CognitoUserPoolId:
     Condition: EnableCognitoAuth
     Description: Cognito User Pool ID
