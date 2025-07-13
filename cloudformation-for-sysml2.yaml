@@ -1046,6 +1046,19 @@ Resources:
       Email: !Ref AdminEmail
       Password: !Ref AdminPassword
 
+  # Cognito User Pool Client for API/Programmatic Access
+  UserPoolClientAPI:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: EnableCognitoAuth
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub "${AWS::StackName}-API-Client"
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
 Outputs:
   ClusterEndpoint:
     Description: Aurora Cluster Endpoint
@@ -1063,8 +1076,12 @@ Outputs:
       - !Sub "https://${DomainName}"
       - !Sub "https://${ApplicationLoadBalancer.DNSName}"
   DnsHostedZoneId:
+    Condition: CreateDNSRecord
     Description: Route 53 Hosted Zone ID for your domain (entered or discovered)
-    Value: !Ref HostedZoneId      
+    Value: !If
+      - AutoDiscoverHostedZone
+      - !GetAtt HostedZoneDiscovery.HostedZoneId
+      - !Ref HostedZoneId      
   CognitoUserPoolId:
     Condition: EnableCognitoAuth
     Description: Cognito User Pool ID
@@ -1097,3 +1114,15 @@ Outputs:
     Condition: EnableCognitoAuth
     Description: Cognito Hosted UI URL
     Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+  CognitoAPIClientId:
+    Condition: EnableCognitoAuth
+    Description: Cognito API Client ID for programmatic access
+    Value: !Ref UserPoolClientAPI
+  CognitoTokenEndpoint:
+    Condition: EnableCognitoAuth
+    Description: Cognito OAuth2 Token Endpoint for API access
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/oauth2/token"
+  CognitoOIDCDiscovery:
+    Condition: EnableCognitoAuth
+    Description: OIDC Discovery endpoint for standard OIDC configuration
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/.well-known/openid_configuration"
