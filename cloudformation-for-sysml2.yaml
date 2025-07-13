@@ -1063,6 +1063,8 @@ Resources:
       HttpMethod: ANY
       AuthorizationType: CUSTOM
       AuthorizerId: !Ref APIGatewayAuthorizer
+      RequestParameters:
+        method.request.path.proxy: true
       Integration:
         Type: HTTP_PROXY
         IntegrationHttpMethod: ANY
