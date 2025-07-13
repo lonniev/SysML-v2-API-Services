@@ -1004,15 +1004,6 @@ Resources:
                   print(f'Authorization error: {str(e)}')
                   return {'isAuthorized': False}
 
-  ALBAuthorizerPermission:
-    Type: AWS::Lambda::Permission
-    Condition: EnableCognitoAuth
-    Properties:
-      FunctionName: !Ref ALBAuthorizerLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "${APIGateway}/*/*"
-
   # API Gateway to handle Lambda authorization
   APIGateway:
     Type: AWS::ApiGateway::RestApi
@@ -1086,6 +1077,16 @@ Resources:
     Properties:
       RestApiId: !Ref APIGateway
       StageName: prod
+
+  ALBAuthorizerPermission:
+    Type: AWS::Lambda::Permission
+    Condition: EnableCognitoAuth
+    DependsOn: APIGateway
+    Properties:
+      FunctionName: !Ref ALBAuthorizerLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/*/*"
 
   # Lambda function to create admin user
   AdminUserCreatorRole:
