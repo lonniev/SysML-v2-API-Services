@@ -1054,6 +1054,17 @@ Resources:
       UserPoolId: !Ref UserPool
       ClientName: !Sub "${AWS::StackName}-API-Client"
       GenerateSecret: false
+      AllowedOAuthFlows:
+        - implicit
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - "http://localhost:3000/callback"
+      SupportedIdentityProviders:
+        - COGNITO
       ExplicitAuthFlows:
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
