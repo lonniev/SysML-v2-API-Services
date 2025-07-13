@@ -907,6 +907,186 @@ Resources:
       Domain: !Ref CognitoDomainPrefix
       UserPoolId: !Ref UserPool
 
+  # Lambda Authorizer for ALB JWT validation
+  ALBAuthorizerRole:
+    Type: AWS::IAM::Role
+    Condition: EnableCognitoAuth
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoTokenValidation
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:GetUser
+                Resource: '*'
+
+  ALBAuthorizerLambda:
+    Type: AWS::Lambda::Function
+    Condition: EnableCognitoAuth
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-alb-authorizer'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt ALBAuthorizerRole.Arn
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          REGION: !Ref AWS::Region
+      Code:
+        ZipFile: |
+          import json
+          import jwt
+          import requests
+          import os
+          from jwt.algorithms import RSAAlgorithm
+          
+          def lambda_handler(event, context):
+              try:
+                  # Extract token from Authorization header
+                  auth_header = event['headers'].get('authorization', '')
+                  if not auth_header.startswith('Bearer '):
+                      return {'isAuthorized': False}
+                  
+                  token = auth_header.split(' ')[1]
+                  
+                  # Get Cognito JWKS
+                  region = os.environ['REGION']
+                  user_pool_id = os.environ['USER_POOL_ID']
+                  jwks_url = f'https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/jwks.json'
+                  
+                  jwks_response = requests.get(jwks_url)
+                  jwks = jwks_response.json()
+                  
+                  # Decode and verify JWT
+                  header = jwt.get_unverified_header(token)
+                  key = None
+                  for jwk in jwks['keys']:
+                      if jwk['kid'] == header['kid']:
+                          key = RSAAlgorithm.from_jwk(json.dumps(jwk))
+                          break
+                  
+                  if not key:
+                      return {'isAuthorized': False}
+                  
+                  # Verify token
+                  payload = jwt.decode(
+                      token,
+                      key,
+                      algorithms=['RS256'],
+                      audience=None,  # Skip audience validation for flexibility
+                      options={'verify_aud': False}
+                  )
+                  
+                  # Check token is from correct user pool
+                  if payload.get('iss') != f'https://cognito-idp.{region}.amazonaws.com/{user_pool_id}':
+                      return {'isAuthorized': False}
+                  
+                  return {
+                      'isAuthorized': True,
+                      'context': {
+                          'userId': payload.get('sub'),
+                          'username': payload.get('cognito:username', payload.get('email'))
+                      }
+                  }
+                  
+              except Exception as e:
+                  print(f'Authorization error: {str(e)}')
+                  return {'isAuthorized': False}
+
+  ALBAuthorizerPermission:
+    Type: AWS::Lambda::Permission
+    Condition: EnableCognitoAuth
+    Properties:
+      FunctionName: !Ref ALBAuthorizerLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "${APIGateway}/*/*"
+
+  # API Gateway to handle Lambda authorization
+  APIGateway:
+    Type: AWS::ApiGateway::RestApi
+    Condition: EnableCognitoAuth
+    Properties:
+      Name: !Sub "${AWS::StackName}-api-gateway"
+      Description: API Gateway with Lambda authorizer for SysML v2 API
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  APIGatewayAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Condition: EnableCognitoAuth
+    Properties:
+      RestApiId: !Ref APIGateway
+      Name: CognitoTokenAuthorizer
+      Type: REQUEST
+      AuthorizerUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ALBAuthorizerLambda.Arn}/invocations"
+      AuthorizerCredentials: !GetAtt APIGatewayAuthorizerRole.Arn
+      IdentitySource: method.request.header.Authorization
+
+  APIGatewayAuthorizerRole:
+    Type: AWS::IAM::Role
+    Condition: EnableCognitoAuth
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaInvokePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt ALBAuthorizerLambda.Arn
+
+  APIGatewayProxyResource:
+    Type: AWS::ApiGateway::Resource
+    Condition: EnableCognitoAuth
+    Properties:
+      RestApiId: !Ref APIGateway
+      ParentId: !GetAtt APIGateway.RootResourceId
+      PathPart: "{proxy+}"
+
+  APIGatewayProxyMethod:
+    Type: AWS::ApiGateway::Method
+    Condition: EnableCognitoAuth
+    Properties:
+      RestApiId: !Ref APIGateway
+      ResourceId: !Ref APIGatewayProxyResource
+      HttpMethod: ANY
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref APIGatewayAuthorizer
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: ANY
+        Uri: !Sub "https://${ApplicationLoadBalancer.DNSName}/{proxy}"
+        RequestParameters:
+          integration.request.path.proxy: method.request.path.proxy
+
+  APIGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Condition: EnableCognitoAuth
+    DependsOn: APIGatewayProxyMethod
+    Properties:
+      RestApiId: !Ref APIGateway
+      StageName: prod
+
   # Lambda function to create admin user
   AdminUserCreatorRole:
     Type: AWS::IAM::Role
@@ -1069,6 +1249,7 @@ Resources:
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
         - ALLOW_USER_SRP_AUTH
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
 
 Outputs:
   ClusterEndpoint:
@@ -1137,3 +1318,7 @@ Outputs:
     Condition: EnableCognitoAuth
     Description: OIDC Discovery endpoint for standard OIDC configuration
     Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/.well-known/openid_configuration"
+  APIGatewayEndpoint:
+    Condition: EnableCognitoAuth
+    Description: API Gateway endpoint for programmatic access with bearer token authentication
+    Value: !Sub "https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
