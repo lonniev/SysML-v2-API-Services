@@ -672,8 +672,8 @@ Resources:
       ServiceToken: !GetAtt HostedZoneDiscoveryLambda.Arn
       DomainName: !Ref DomainName
 
-  # DNS Record for custom domain
-  DNSRecord:
+  # DNS Record for API (primary) - points to API Gateway
+  DNSRecordAPI:
     Type: AWS::Route53::RecordSet
     Condition: CreateDNSRecord
     Properties:
@@ -682,6 +682,22 @@ Resources:
         - !GetAtt HostedZoneDiscovery.HostedZoneId
         - !Ref HostedZoneId
       Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt APIGateway.RegionalDomainName
+        HostedZoneId: !GetAtt APIGateway.RegionalHostedZoneId
+        EvaluateTargetHealth: true
+
+  # DNS Record for Web UI - points to ALB
+  DNSRecordWeb:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNSRecord
+    Properties:
+      HostedZoneId: !If
+        - AutoDiscoverHostedZone
+        - !GetAtt HostedZoneDiscovery.HostedZoneId
+        - !Ref HostedZoneId
+      Name: !Sub "web.${DomainName}"
       Type: A
       AliasTarget:
         DNSName: !GetAtt ApplicationLoadBalancer.DNSName
@@ -1003,6 +1019,16 @@ Resources:
                       if payload.get('exp', 0) < time.time():
                           raise Exception('Token expired')
                       
+                      # Create broader resource ARN for API Gateway
+                      method_arn = event['methodArn']
+                      # Replace specific method/resource with wildcard
+                      # e.g., arn:aws:execute-api:region:account:api-id/stage/method/resource -> arn:aws:execute-api:region:account:api-id/stage/*/*
+                      arn_parts = method_arn.split('/')
+                      if len(arn_parts) >= 3:
+                          resource_arn = '/'.join(arn_parts[:2]) + '/*/*'
+                      else:
+                          resource_arn = method_arn + '/*'
+                      
                       return {
                           'principalId': payload.get('sub', 'user'),
                           'policyDocument': {
@@ -1011,7 +1037,7 @@ Resources:
                                   {
                                       'Action': 'execute-api:Invoke',
                                       'Effect': 'Allow',
-                                      'Resource': event['methodArn']
+                                      'Resource': resource_arn
                                   }
                               ]
                           },
@@ -1286,15 +1312,34 @@ Outputs:
   LoadBalancerDNS:
     Description: Application Load Balancer DNS Name
     Value: !GetAtt ApplicationLoadBalancer.DNSName
-  SwaggerDocsEndpoint:
-    Description: Endpoint for SysML v2 API Swagger Documentation
-    Value: !Sub "https://${ApplicationLoadBalancer.DNSName}/docs/"
-  SysmlRepositoryUrl:
-    Description: SysML v2 Repository API Endpoint
+  SysmlRepositoryApiUrl:
+    Description: SysML v2 Repository API Endpoint (Primary Interface)
     Value: !If
       - CreateDNSRecord
       - !Sub "https://${DomainName}"
+      - !If
+        - EnableCognitoAuth
+        - !Sub "https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+        - !Sub "https://${ApplicationLoadBalancer.DNSName}"
+  SysmlRepositoryWebUrl:
+    Description: SysML v2 Repository Web Interface
+    Value: !If
+      - CreateDNSRecord
+      - !Sub "https://web.${DomainName}"
       - !Sub "https://${ApplicationLoadBalancer.DNSName}"
+  SysmlRepositoryWebDocsUrl:
+    Description: SysML v2 Repository Documentation
+    Value: !If
+      - CreateDNSRecord
+      - !Sub "https://web.${DomainName}/docs"
+      - !Sub "https://${ApplicationLoadBalancer.DNSName}/docs"
+  SysmlRepositoryApiUrlInternal:
+    Condition: EnableCognitoAuth
+    Description: Internal AWS API Gateway URL (no custom DNS)
+    Value: !Sub "https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  SysmlRepositoryWebUrlInternal:
+    Description: Internal AWS ALB URL (no custom DNS)
+    Value: !Sub "https://${ApplicationLoadBalancer.DNSName}"
   DnsHostedZoneId:
     Condition: CreateDNSRecord
     Description: Route 53 Hosted Zone ID for your domain (entered or discovered)
@@ -1330,10 +1375,6 @@ Outputs:
     Condition: EnableCognitoAuth
     Description: Cognito User Pool Client ID
     Value: !Ref UserPoolClient
-  CognitoHostedUI:
-    Condition: EnableCognitoAuth
-    Description: Cognito Hosted UI URL
-    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
   CognitoAPIClientId:
     Condition: EnableCognitoAuth
     Description: Cognito API Client ID for programmatic access
