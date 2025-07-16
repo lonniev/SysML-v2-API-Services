@@ -52,10 +52,10 @@ Parameters:
     Description: AWS Marketplace Product Code for entitlement checking
     Default: ""
 
-  AdminUsername:
+  AdminFullName:
     Type: String
-    Default: "sysml2_admin"
-    Description: Username for the initial admin user (leave as sysml2_admin)
+    Default: "SysML v2 Administrator"
+    Description: Full name for the initial admin user (displayed name, not login username)
   AdminEmail:
     Type: String
     Description: Email address for the initial admin user (enter your admin's own real email address). Necessary to receive the initial password.
@@ -272,6 +272,9 @@ Resources:
     Condition: CreateNewCertificate
     Properties:
       DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Sub "web.${DomainName}"
+        - !Sub "*.${DomainName}"
       ValidationMethod: DNS
       Tags:
         - Key: Name
@@ -682,11 +685,10 @@ Resources:
         - !GetAtt HostedZoneDiscovery.HostedZoneId
         - !Ref HostedZoneId
       Name: !Ref DomainName
-      Type: A
-      AliasTarget:
-        DNSName: !GetAtt APIGateway.RegionalDomainName
-        HostedZoneId: !GetAtt APIGateway.RegionalHostedZoneId
-        EvaluateTargetHealth: true
+      Type: CNAME
+      TTL: 300
+      ResourceRecords:
+        - !Sub "${APIGateway}.execute-api.${AWS::Region}.amazonaws.com"
 
   # DNS Record for Web UI - points to ALB
   DNSRecordWeb:
@@ -1216,13 +1218,18 @@ Resources:
                       
                       if not user_exists:
                           # User doesn't exist, create it
+                          full_name = event['ResourceProperties'].get('FullName', '')
+                          user_attributes = [
+                              {'Name': 'email', 'Value': email},
+                              {'Name': 'email_verified', 'Value': 'true'}
+                          ]
+                          if full_name:
+                              user_attributes.append({'Name': 'name', 'Value': full_name})
+                          
                           create_params = {
                               'UserPoolId': user_pool_id,
                               'Username': email,
-                              'UserAttributes': [
-                                  {'Name': 'email', 'Value': email},
-                                  {'Name': 'email_verified', 'Value': 'true'}
-                              ],
+                              'UserAttributes': user_attributes,
                               'ForceAliasCreation': True
                           }
                           
@@ -1276,7 +1283,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt AdminUserCreatorLambda.Arn
       UserPoolId: !Ref UserPool
-      Username: !Ref AdminUsername
+      FullName: !Ref AdminFullName
       Email: !Ref AdminEmail
       Password: !Ref AdminPassword
 
