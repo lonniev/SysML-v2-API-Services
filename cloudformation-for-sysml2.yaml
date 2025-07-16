@@ -276,6 +276,22 @@ Resources:
         - !Sub "web.${DomainName}"
         - !Sub "*.${DomainName}"
       ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !If
+            - AutoDiscoverHostedZone
+            - !GetAtt HostedZoneDiscovery.HostedZoneId
+            - !Ref HostedZoneId
+        - DomainName: !Sub "web.${DomainName}"
+          HostedZoneId: !If
+            - AutoDiscoverHostedZone
+            - !GetAtt HostedZoneDiscovery.HostedZoneId
+            - !Ref HostedZoneId
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-Certificate""
+        - !Sub "*.${DomainName}"
+      ValidationMethod: DNS
       Tags:
         - Key: Name
           Value: !Sub "${DomainName}-Certificate"
