@@ -504,6 +504,7 @@ Resources:
 
   HTTPSListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn: UserPoolDomain
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: !Ref HttpsPort
