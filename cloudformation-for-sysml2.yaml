@@ -562,55 +562,6 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
 
-  # Cognito User Pool
-  UserPool:
-    Type: AWS::Cognito::UserPool
-    Condition: EnableCognitoAuth
-    Properties:
-      UserPoolName: !Sub "${AWS::StackName}-UserPool"
-      AutoVerifiedAttributes:
-        - email
-      UsernameAttributes:
-        - email
-      AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true
-      Schema:
-        - Name: email
-          AttributeDataType: String
-          Mutable: false
-          Required: true
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireLowercase: true
-          RequireNumbers: true
-          RequireSymbols: true
-          RequireUppercase: true
-
-  # Cognito User Pool Client
-  UserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Condition: EnableCognitoAuth
-    Properties:
-      UserPoolId: !Ref UserPool
-      ClientName: !Sub "${AWS::StackName}-ALB-Client"
-      GenerateSecret: true
-      AllowedOAuthFlows:
-        - code
-      AllowedOAuthFlowsUserPoolClient: true
-      AllowedOAuthScopes:
-        - openid
-        - email
-        - profile
-      CallbackURLs: 
-        - !If
-          - CreateDNSRecord
-          - !Sub "https://${DomainName}/oauth2/idpresponse"
-          - !Sub "https://${ApplicationLoadBalancer.DNSName}/oauth2/idpresponse"
-      SupportedIdentityProviders:
-        - COGNITO
-      PreventUserExistenceErrors: ENABLED
-
   # Cognito User Pool Domain
   UserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
@@ -969,8 +920,6 @@ Resources:
           - UseExistingCertificate
           - !Ref ExistingCertificateArn
           - !Ref NewCertificate
-          
-
           
   # DNS Record for Cognito Custom Domain
   DNSRecordAuth:
@@ -1508,10 +1457,6 @@ Outputs:
       - CreateNewSecret
       - !Ref DatabaseSecret
       - !Ref ExistingSecretArn
-  CognitoUserPoolId:
-    Condition: EnableCognitoAuth
-    Description: Cognito User Pool ID
-    Value: !Ref UserPool
   CognitoUserPoolClientId:
     Condition: EnableCognitoAuth
     Description: Cognito User Pool Client ID
