@@ -287,6 +287,11 @@ Resources:
             - AutoDiscoverHostedZone
             - !GetAtt HostedZoneDiscovery.HostedZoneId
             - !Ref HostedZoneId
+        - DomainName: !Sub "auth.${DomainName}"
+          HostedZoneId: !If
+            - AutoDiscoverHostedZone
+            - !GetAtt HostedZoneDiscovery.HostedZoneId
+            - !Ref HostedZoneId
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-Certificate""
@@ -956,6 +961,35 @@ Resources:
     Properties:
       Domain: !Ref CognitoDomainPrefix
       UserPoolId: !Ref UserPool
+      
+  # Cognito Custom Domain for OIDC endpoints
+  CognitoCustomDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Condition: CreateDNSRecord
+    Properties:
+      Domain: !Sub "auth.${DomainName}"
+      UserPoolId: !Ref UserPool
+      CustomDomainConfig:
+        CertificateArn: !If
+          - UseExistingCertificate
+          - !Ref ExistingCertificateArn
+          - !Ref NewCertificate
+          
+  # DNS Record for Cognito Custom Domain
+  DNSRecordAuth:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNSRecord
+    Properties:
+      HostedZoneId: !If
+        - AutoDiscoverHostedZone
+        - !GetAtt HostedZoneDiscovery.HostedZoneId
+        - !Ref HostedZoneId
+      Name: !Sub "auth.${DomainName}"
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CognitoCustomDomain.CloudFrontDistribution
+        HostedZoneId: "Z2FDTNDATAQYW2" # CloudFront hosted zone ID
+        EvaluateTargetHealth: false
 
   # Lambda Authorizer for ALB JWT validation
   ALBAuthorizerRole:
@@ -1410,6 +1444,22 @@ Outputs:
     Condition: EnableCognitoAuth
     Description: OIDC Discovery endpoint for standard OIDC configuration
     Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/.well-known/openid_configuration"
+  CustomDomainOIDCDiscovery:
+    Condition: CreateDNSRecord
+    Description: Custom domain OIDC Discovery endpoint - Used by clients to discover all available OIDC endpoints (proxies to Cognito)
+    Value: !Sub "https://auth.${DomainName}/.well-known/openid_configuration"
+  CustomDomainTokenEndpoint:
+    Condition: CreateDNSRecord
+    Description: Custom domain OAuth2/OIDC token endpoint - Used by clients to exchange authorization codes for tokens or refresh tokens (proxies to Cognito)
+    Value: !Sub "https://auth.${DomainName}/oauth2/token"
+  CustomDomainAuthorizationEndpoint:
+    Condition: CreateDNSRecord
+    Description: Custom domain OAuth2/OIDC authorization endpoint - Used to initiate the authentication flow and obtain user consent (proxies to Cognito)
+    Value: !Sub "https://auth.${DomainName}/oauth2/authorize"
+  CustomDomainUserInfoEndpoint:
+    Condition: CreateDNSRecord
+    Description: Custom domain OIDC UserInfo endpoint - Used to retrieve authenticated user profile information (proxies to Cognito)
+    Value: !Sub "https://auth.${DomainName}/oauth2/userInfo"
   APIGatewayEndpoint:
     Condition: EnableCognitoAuth
     Description: API Gateway endpoint for programmatic access with bearer token authentication
