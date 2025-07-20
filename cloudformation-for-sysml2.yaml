@@ -504,7 +504,9 @@ Resources:
 
   HTTPSListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
-    DependsOn: UserPoolDomain
+    DependsOn: 
+      - UserPoolDomain
+      - CognitoCustomDomain
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: !Ref HttpsPort
@@ -954,14 +956,6 @@ Resources:
       SupportedIdentityProviders:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
-
-  # Cognito User Pool Domain
-  UserPoolDomain:
-    Type: AWS::Cognito::UserPoolDomain
-    Condition: EnableCognitoAuth
-    Properties:
-      Domain: !Ref CognitoDomainPrefix
-      UserPoolId: !Ref UserPool
       
   # Cognito Custom Domain for OIDC endpoints
   CognitoCustomDomain:
