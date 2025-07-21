@@ -29,16 +29,6 @@ Parameters:
     Type: String
     Description: Route 53 Hosted Zone ID for your domain (leave empty to auto-discover from domain name)
     Default: ""
-  CreateDNSRecord:
-    Type: String
-    Default: "true"
-    AllowedValues: ["true", "false"]
-    Description: Whether to create a DNS record in Route 53 using the provided Hosted Zone ID and Domain Name
-  EnableCognito:
-    Type: String
-    Default: "true"
-    AllowedValues: ["true", "false"]
-    Description: Enable Cognito authentication for the ALB (leave as true)
   CognitoDomainPrefix:
     Type: String
     Description: Prefix for Cognito domain (must be unique) and changed to your own prefix
@@ -51,7 +41,6 @@ Parameters:
     Type: String
     Description: AWS Marketplace Product Code for entitlement checking
     Default: ""
-
   AdminFullName:
     Type: String
     Default: "SysML v2 Administrator"
@@ -103,14 +92,10 @@ Parameters:
 
 Conditions:
   CreateNewSecret: !Equals [!Ref SecretsOption, CreateNew]
-  UseExistingSecret: !Equals [!Ref SecretsOption, UseExisting]
   UseExistingCertificate: !Equals [!Ref CertificateOption, Existing]
   CreateNewCertificate: !Equals [!Ref CertificateOption, New]
-  CreateDNSRecord: !Equals [!Ref CreateDNSRecord, "true"]
-  EnableCognitoAuth: !Equals [!Ref EnableCognito, "true"]
   EnableMarketplaceCheck: !Not [!Equals [!Ref MarketplaceProductCode, ""]]
-  AutoDiscoverHostedZone: !And [!Equals [!Ref CreateDNSRecord, "true"], !Equals [!Ref HostedZoneId, ""]]
-  SetPermanentPassword: !Not [!Equals [!Ref AdminPassword, ""]]
+  AutoDiscoverHostedZone: !Equals [!Ref HostedZoneId, ""]
 
 Resources:
   VPC:
@@ -295,11 +280,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-Certificate"
-        - !Sub "*.${DomainName}"
-      ValidationMethod: DNS
-      Tags:
-        - Key: Name
-          Value: !Sub "${DomainName}-Certificate"
 
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -516,23 +496,20 @@ Resources:
             - UseExistingCertificate
             - !Ref ExistingCertificateArn
             - !Ref NewCertificate
-      DefaultActions: !If
-        - EnableCognitoAuth
-        - - Type: authenticate-cognito
-            Order: 1
-            AuthenticateCognitoConfig:
-              UserPoolArn: !GetAtt UserPool.Arn
-              UserPoolClientId: !Ref UserPoolClient
-              UserPoolDomain: !Sub "${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
-              OnUnauthenticatedRequest: authenticate
-              SessionCookieName: AWSELBAuthSessionCookie
-              SessionTimeout: 3600
-              Scope: "openid email profile"
-          - Type: forward
-            Order: 2
-            TargetGroupArn: !Ref TargetGroup
-        - - Type: forward
-            TargetGroupArn: !Ref TargetGroup
+      DefaultActions: 
+        - Type: authenticate-cognito
+          Order: 1
+          AuthenticateCognitoConfig:
+            UserPoolArn: !GetAtt UserPool.Arn
+            UserPoolClientId: !Ref UserPoolClient
+            UserPoolDomain: !Sub "${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+            OnUnauthenticatedRequest: authenticate
+            SessionCookieName: AWSELBAuthSessionCookie
+            SessionTimeout: 3600
+            Scope: "openid email profile"
+        - Type: forward
+          Order: 2
+          TargetGroupArn: !Ref TargetGroup
 
   HTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -553,7 +530,6 @@ Resources:
   # HTTP Listener for API Gateway (no auth)
   HTTPListenerAPIGateway:
     Type: AWS::ElasticLoadBalancingV2::Listener
-    Condition: EnableCognitoAuth
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: 8080
@@ -565,7 +541,6 @@ Resources:
   # Cognito User Pool Domain
   UserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
-    Condition: EnableCognitoAuth
     Properties:
       Domain: !Ref CognitoDomainPrefix
       UserPoolId: !Ref UserPool
@@ -653,7 +628,7 @@ Resources:
   # DNS Record for API (primary) - points to API Gateway
   DNSRecordAPI:
     Type: AWS::Route53::RecordSet
-    Condition: CreateDNSRecord
+    DependsOn: APIGateway
     Properties:
       HostedZoneId: !If
         - AutoDiscoverHostedZone
@@ -668,7 +643,6 @@ Resources:
   # DNS Record for Web UI - points to ALB
   DNSRecordWeb:
     Type: AWS::Route53::RecordSet
-    Condition: CreateDNSRecord
     Properties:
       HostedZoneId: !If
         - AutoDiscoverHostedZone
@@ -792,7 +766,6 @@ Resources:
   # Lambda function for Cognito PreSignUp trigger
   CognitoPreSignUpLambdaRole:
     Type: AWS::IAM::Role
-    Condition: EnableCognitoAuth
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -815,7 +788,6 @@ Resources:
 
   CognitoPreSignUpLambda:
     Type: AWS::Lambda::Function
-    Condition: EnableCognitoAuth
     Properties:
       FunctionName: !Sub '${AWS::StackName}-cognito-presignup'
       Runtime: python3.9
@@ -849,7 +821,6 @@ Resources:
 
   CognitoPreSignUpLambdaPermission:
     Type: AWS::Lambda::Permission
-    Condition: EnableCognitoAuth
     Properties:
       FunctionName: !Ref CognitoPreSignUpLambda
       Action: lambda:InvokeFunction
@@ -859,7 +830,6 @@ Resources:
   # Cognito User Pool
   UserPool:
     Type: AWS::Cognito::UserPool
-    Condition: EnableCognitoAuth
     Properties:
       UserPoolName: !Sub "${AWS::StackName}-UserPool"
       AutoVerifiedAttributes:
@@ -887,7 +857,6 @@ Resources:
   # Cognito User Pool Client
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
-    Condition: EnableCognitoAuth
     Properties:
       UserPoolId: !Ref UserPool
       ClientName: !Sub "${AWS::StackName}-ALB-Client"
@@ -900,10 +869,7 @@ Resources:
         - email
         - profile
       CallbackURLs: 
-        - !If
-          - CreateDNSRecord
-          - !Sub "https://${DomainName}/oauth2/idpresponse"
-          - !Sub "https://${ApplicationLoadBalancer.DNSName}/oauth2/idpresponse"
+        - !Sub "https://${DomainName}/oauth2/idpresponse"
       SupportedIdentityProviders:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
@@ -911,7 +877,6 @@ Resources:
   # Cognito Custom Domain for OIDC endpoints
   CognitoCustomDomain:
     Type: AWS::Cognito::UserPoolDomain
-    Condition: CreateDNSRecord
     Properties:
       Domain: !Sub "auth.${DomainName}"
       UserPoolId: !Ref UserPool
@@ -924,7 +889,6 @@ Resources:
   # DNS Record for Cognito Custom Domain
   DNSRecordAuth:
     Type: AWS::Route53::RecordSet
-    Condition: CreateDNSRecord
     Properties:
       HostedZoneId: !If
         - AutoDiscoverHostedZone
@@ -940,7 +904,6 @@ Resources:
   # Lambda function to wait for Cognito domain verification
   CognitoDomainVerifierRole:
     Type: AWS::IAM::Role
-    Condition: CreateDNSRecord
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -963,7 +926,6 @@ Resources:
 
   CognitoDomainVerifierLambda:
     Type: AWS::Lambda::Function
-    Condition: CreateDNSRecord
     Properties:
       FunctionName: !Sub '${AWS::StackName}-domain-verifier'
       Runtime: python3.9
@@ -1018,7 +980,6 @@ Resources:
 
   CognitoDomainVerifier:
     Type: AWS::CloudFormation::CustomResource
-    Condition: CreateDNSRecord
     DependsOn: DNSRecordAuth
     Properties:
       ServiceToken: !GetAtt CognitoDomainVerifierLambda.Arn
@@ -1027,7 +988,6 @@ Resources:
   # Lambda Authorizer for ALB JWT validation
   ALBAuthorizerRole:
     Type: AWS::IAM::Role
-    Condition: EnableCognitoAuth
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -1050,7 +1010,6 @@ Resources:
 
   ALBAuthorizerLambda:
     Type: AWS::Lambda::Function
-    Condition: EnableCognitoAuth
     Properties:
       FunctionName: !Sub '${AWS::StackName}-alb-authorizer'
       Runtime: python3.9
@@ -1143,7 +1102,6 @@ Resources:
   # API Gateway to handle Lambda authorization
   APIGateway:
     Type: AWS::ApiGateway::RestApi
-    Condition: EnableCognitoAuth
     Properties:
       Name: !Sub "${AWS::StackName}-api-gateway"
       Description: API Gateway with Lambda authorizer for SysML v2 API
@@ -1153,7 +1111,6 @@ Resources:
 
   APIGatewayAuthorizer:
     Type: AWS::ApiGateway::Authorizer
-    Condition: EnableCognitoAuth
     Properties:
       RestApiId: !Ref APIGateway
       Name: CognitoTokenAuthorizer
@@ -1164,7 +1121,6 @@ Resources:
 
   APIGatewayAuthorizerRole:
     Type: AWS::IAM::Role
-    Condition: EnableCognitoAuth
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -1184,7 +1140,6 @@ Resources:
 
   APIGatewayProxyResource:
     Type: AWS::ApiGateway::Resource
-    Condition: EnableCognitoAuth
     Properties:
       RestApiId: !Ref APIGateway
       ParentId: !GetAtt APIGateway.RootResourceId
@@ -1192,7 +1147,6 @@ Resources:
 
   APIGatewayProxyMethod:
     Type: AWS::ApiGateway::Method
-    Condition: EnableCognitoAuth
     Properties:
       RestApiId: !Ref APIGateway
       ResourceId: !Ref APIGatewayProxyResource
@@ -1210,7 +1164,6 @@ Resources:
 
   APIGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
-    Condition: EnableCognitoAuth
     DependsOn: APIGatewayProxyMethod
     Properties:
       RestApiId: !Ref APIGateway
@@ -1218,8 +1171,6 @@ Resources:
 
   ALBAuthorizerPermission:
     Type: AWS::Lambda::Permission
-    Condition: EnableCognitoAuth
-    DependsOn: APIGateway
     Properties:
       FunctionName: !Ref ALBAuthorizerLambda
       Action: lambda:InvokeFunction
@@ -1229,7 +1180,6 @@ Resources:
   # Lambda function to create admin user
   AdminUserCreatorRole:
     Type: AWS::IAM::Role
-    Condition: EnableCognitoAuth
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -1255,7 +1205,6 @@ Resources:
 
   AdminUserCreatorLambda:
     Type: AWS::Lambda::Function
-    Condition: EnableCognitoAuth
     Properties:
       FunctionName: !Sub '${AWS::StackName}-admin-user-creator'
       Runtime: python3.9
@@ -1362,7 +1311,6 @@ Resources:
 
   AdminUser:
     Type: AWS::CloudFormation::CustomResource
-    Condition: EnableCognitoAuth
     Properties:
       ServiceToken: !GetAtt AdminUserCreatorLambda.Arn
       UserPoolId: !Ref UserPool
@@ -1373,7 +1321,6 @@ Resources:
   # Cognito User Pool Client for API/Programmatic Access
   UserPoolClientAPI:
     Type: AWS::Cognito::UserPoolClient
-    Condition: EnableCognitoAuth
     Properties:
       UserPoolId: !Ref UserPool
       ClientName: !Sub "${AWS::StackName}-API-Client"
@@ -1404,45 +1351,29 @@ Outputs:
     Value: !GetAtt ApplicationLoadBalancer.DNSName
   SysmlRepositoryApiUrl:
     Description: SysML v2 Repository API Endpoint (Primary Interface)
-    Value: !If
-      - CreateDNSRecord
-      - !Sub "https://${DomainName}"
-      - !If
-        - EnableCognitoAuth
-        - !Sub "https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
-        - !Sub "https://${ApplicationLoadBalancer.DNSName}"
+    Value: !Sub "https://${DomainName}"
   SysmlRepositoryWebUrl:
     Description: SysML v2 Repository Web Interface
-    Value: !If
-      - CreateDNSRecord
-      - !Sub "https://web.${DomainName}"
-      - !Sub "https://${ApplicationLoadBalancer.DNSName}"
+    Value: !Sub "https://web.${DomainName}"
   SysmlRepositoryWebDocsUrl:
     Description: SysML v2 Repository Documentation
-    Value: !If
-      - CreateDNSRecord
-      - !Sub "https://web.${DomainName}/docs"
-      - !Sub "https://${ApplicationLoadBalancer.DNSName}/docs"
+    Value: !Sub "https://web.${DomainName}/docs"
   SysmlRepositoryApiUrlInternal:
-    Condition: EnableCognitoAuth
     Description: Internal AWS API Gateway URL (no custom DNS)
     Value: !Sub "https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
   SysmlRepositoryWebUrlInternal:
     Description: Internal AWS ALB URL (no custom DNS)
     Value: !Sub "https://${ApplicationLoadBalancer.DNSName}"
   DnsHostedZoneId:
-    Condition: CreateDNSRecord
     Description: Route 53 Hosted Zone ID for your domain (entered or discovered)
     Value: !If
       - AutoDiscoverHostedZone
       - !GetAtt HostedZoneDiscovery.HostedZoneId
       - !Ref HostedZoneId      
   CognitoUserPoolId:
-    Condition: EnableCognitoAuth
     Description: Cognito User Pool ID
     Value: !Ref UserPool
   CognitoLoginUrl:
-    Condition: EnableCognitoAuth
     Description: Cognito Login URL
     Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/login"
   CertificateArn:
@@ -1458,38 +1389,29 @@ Outputs:
       - !Ref DatabaseSecret
       - !Ref ExistingSecretArn
   CognitoUserPoolClientId:
-    Condition: EnableCognitoAuth
     Description: Cognito User Pool Client ID
     Value: !Ref UserPoolClient
   CognitoAPIClientId:
-    Condition: EnableCognitoAuth
     Description: Cognito API Client ID for programmatic access
     Value: !Ref UserPoolClientAPI
   CognitoTokenEndpoint:
-    Condition: EnableCognitoAuth
     Description: Cognito OAuth2 Token Endpoint for API access
     Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/oauth2/token"
   CognitoOIDCDiscovery:
-    Condition: EnableCognitoAuth
     Description: OIDC Discovery endpoint for standard OIDC configuration
     Value: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}/.well-known/openid-configuration"
   CustomDomainOIDCDiscovery:
-    Condition: CreateDNSRecord
     Description: Custom domain OIDC Discovery endpoint - Used by clients to discover all available OIDC endpoints (proxies to Cognito)
     Value: !Sub "https://auth.${DomainName}/.well-known/openid-configuration"
   CustomDomainTokenEndpoint:
-    Condition: CreateDNSRecord
     Description: Custom domain OAuth2/OIDC token endpoint - Used by clients to exchange authorization codes for tokens or refresh tokens (proxies to Cognito)
     Value: !Sub "https://auth.${DomainName}/oauth2/token"
   CustomDomainAuthorizationEndpoint:
-    Condition: CreateDNSRecord
     Description: Custom domain OAuth2/OIDC authorization endpoint - Used to initiate the authentication flow and obtain user consent (proxies to Cognito)
     Value: !Sub "https://auth.${DomainName}/oauth2/authorize"
   CustomDomainUserInfoEndpoint:
-    Condition: CreateDNSRecord
     Description: Custom domain OIDC UserInfo endpoint - Used to retrieve authenticated user profile information (proxies to Cognito)
     Value: !Sub "https://auth.${DomainName}/oauth2/userInfo"
   APIGatewayEndpoint:
-    Condition: EnableCognitoAuth
     Description: API Gateway endpoint for programmatic access with bearer token authentication
     Value: !Sub "https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
