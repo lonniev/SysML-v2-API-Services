@@ -29,10 +29,6 @@ Parameters:
     Type: String
     Description: Route 53 Hosted Zone ID for your domain (leave empty to auto-discover from domain name)
     Default: ""
-  CognitoDomainPrefix:
-    Type: String
-    Description: Prefix for Cognito domain (must be unique) and changed to your own prefix
-    Default: "sysml-saas-auth"
   CognitoUserLimit:
     Type: Number
     Default: 5
@@ -482,11 +478,46 @@ Resources:
         - Key: slow_start.duration_seconds
           Value: 300
 
+      
+  # Cognito Custom Domain for OIDC endpoints
+  CognitoCustomDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "auth.${DomainName}"
+      UserPoolId: !Ref UserPool
+      CustomDomainConfig:
+        CertificateArn: !If
+          - UseExistingCertificate
+          - !Ref ExistingCertificateArn
+          - !Ref NewCertificate
+
+  ALBAuthenticationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: elasticloadbalancing.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:DescribeUserPool
+                  - cognito-idp:GetSigningCertificate
+                  - cognito-idp:DescribeUserPoolClient
+                Resource: !GetAtt UserPool.Arn
+
   HTTPSListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
-    DependsOn: 
-      - UserPoolDomain
+    DependsOn:
       - CognitoCustomDomain
+      - CognitoDomainVerifier
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: !Ref HttpsPort
@@ -496,13 +527,13 @@ Resources:
             - UseExistingCertificate
             - !Ref ExistingCertificateArn
             - !Ref NewCertificate
-      DefaultActions: 
+      DefaultActions:
         - Type: authenticate-cognito
           Order: 1
           AuthenticateCognitoConfig:
             UserPoolArn: !GetAtt UserPool.Arn
             UserPoolClientId: !Ref UserPoolClient
-            UserPoolDomain: !Sub "${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+            UserPoolDomain: !Sub "auth.${DomainName}"
             OnUnauthenticatedRequest: authenticate
             SessionCookieName: AWSELBAuthSessionCookie
             SessionTimeout: 3600
@@ -537,13 +568,6 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
-
-  # Cognito User Pool Domain
-  UserPoolDomain:
-    Type: AWS::Cognito::UserPoolDomain
-    Properties:
-      Domain: !Ref CognitoDomainPrefix
-      UserPoolId: !Ref UserPool
 
   # Lambda function to discover HostedZoneId
   HostedZoneDiscoveryRole:
@@ -873,18 +897,6 @@ Resources:
       SupportedIdentityProviders:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
-      
-  # Cognito Custom Domain for OIDC endpoints
-  CognitoCustomDomain:
-    Type: AWS::Cognito::UserPoolDomain
-    Properties:
-      Domain: !Sub "auth.${DomainName}"
-      UserPoolId: !Ref UserPool
-      CustomDomainConfig:
-        CertificateArn: !If
-          - UseExistingCertificate
-          - !Ref ExistingCertificateArn
-          - !Ref NewCertificate
           
   # DNS Record for Cognito Custom Domain
   DNSRecordAuth:
@@ -1053,6 +1065,8 @@ Resources:
                       # Basic validation
                       region = os.environ['REGION']
                       user_pool_id = os.environ['USER_POOL_ID']
+
+                      # Note: issuer is the default Cognito URL, not the custom domain
                       expected_iss = f'https://cognito-idp.{region}.amazonaws.com/{user_pool_id}'
                       
                       if payload.get('iss') != expected_iss:
@@ -1375,7 +1389,7 @@ Outputs:
     Value: !Ref UserPool
   CognitoLoginUrl:
     Description: Cognito Login URL
-    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/login"
+    Value: !Sub "https://auth.${DomainName}/login"
   CertificateArn:
     Description: ARN of the used or created ACM certificate
     Value: !If
@@ -1395,22 +1409,16 @@ Outputs:
     Description: Cognito API Client ID for programmatic access
     Value: !Ref UserPoolClientAPI
   CognitoTokenEndpoint:
-    Description: Cognito OAuth2 Token Endpoint for API access
-    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/oauth2/token"
+    Description: Cognito OAuth2 Token Endpoint for API access  - Used by clients to exchange authorization codes for tokens or refresh tokens (proxies to Cognito)
+    Value: !Sub "https://auth.${DomainName}/oauth2/token"
   CognitoOIDCDiscovery:
     Description: OIDC Discovery endpoint for standard OIDC configuration
-    Value: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}/.well-known/openid-configuration"
-  CustomDomainOIDCDiscovery:
-    Description: Custom domain OIDC Discovery endpoint - Used by clients to discover all available OIDC endpoints (proxies to Cognito)
     Value: !Sub "https://auth.${DomainName}/.well-known/openid-configuration"
-  CustomDomainTokenEndpoint:
-    Description: Custom domain OAuth2/OIDC token endpoint - Used by clients to exchange authorization codes for tokens or refresh tokens (proxies to Cognito)
-    Value: !Sub "https://auth.${DomainName}/oauth2/token"
-  CustomDomainAuthorizationEndpoint:
-    Description: Custom domain OAuth2/OIDC authorization endpoint - Used to initiate the authentication flow and obtain user consent (proxies to Cognito)
+  CognitoAuthorizationEndpoint:
+    Description: OAuth2/OIDC authorization endpoint - Used to initiate the authentication flow and obtain user consent (proxies to Cognito)
     Value: !Sub "https://auth.${DomainName}/oauth2/authorize"
-  CustomDomainUserInfoEndpoint:
-    Description: Custom domain OIDC UserInfo endpoint - Used to retrieve authenticated user profile information (proxies to Cognito)
+  CognitoUserInfoEndpoint:
+    Description: OIDC UserInfo endpoint - Used to retrieve authenticated user profile information (proxies to Cognito)
     Value: !Sub "https://auth.${DomainName}/oauth2/userInfo"
   APIGatewayEndpoint:
     Description: API Gateway endpoint for programmatic access with bearer token authentication
