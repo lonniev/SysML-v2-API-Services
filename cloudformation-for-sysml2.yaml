@@ -894,6 +894,7 @@ Resources:
         - profile
       CallbackURLs: 
         - !Sub "https://${DomainName}/oauth2/idpresponse"
+        - !Sub "https://web.${DomainName}/oauth2/idpresponse"
       SupportedIdentityProviders:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
@@ -996,6 +997,154 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CognitoDomainVerifierLambda.Arn
       Domain: !Sub "auth.${DomainName}"
+      
+  # Lambda function to proxy OIDC discovery requests
+  OIDCProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  OIDCProxyLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-oidc-proxy'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt OIDCProxyRole.Arn
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          REGION: !Ref AWS::Region
+          DOMAIN_NAME: !Sub "auth.${DomainName}"
+      Code:
+        ZipFile: |
+          import json
+          import urllib.request
+          import os
+          import boto3
+          
+          def lambda_handler(event, context):
+              region = os.environ['REGION']
+              user_pool_id = os.environ['USER_POOL_ID']
+              domain_name = os.environ['DOMAIN_NAME']
+              
+              # Get the path from the event
+              path = event.get('path', '')
+              
+              # Map the custom domain URL to the Cognito URL
+              if path == '/.well-known/openid-configuration':
+                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
+                  
+                  try:
+                      # Get the OIDC configuration from Cognito
+                      req = urllib.request.Request(cognito_url)
+                      response = urllib.request.urlopen(req)
+                      config = json.loads(response.read().decode('utf-8'))
+                      
+                      # Replace Cognito URLs with custom domain URLs
+                      for key in config:
+                          if isinstance(config[key], str) and 'cognito-idp' in config[key]:
+                              config[key] = config[key].replace(
+                                  f"cognito-idp.{region}.amazonaws.com/{user_pool_id}",
+                                  domain_name
+                              )
+                      
+                      return {
+                          'statusCode': 200,
+                          'headers': {
+                              'Content-Type': 'application/json',
+                              'Access-Control-Allow-Origin': '*'
+                          },
+                          'body': json.dumps(config)
+                      }
+                  except Exception as e:
+                      print(f'Error: {str(e)}')
+                      return {
+                          'statusCode': 500,
+                          'body': json.dumps({'error': str(e)})
+                      }
+              
+              # Handle other OIDC endpoints if needed
+              return {
+                  'statusCode': 404,
+                  'body': json.dumps({'error': 'Not Found'})
+              }
+
+  OIDCProxyAPI:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${AWS::StackName}-oidc-proxy"
+      Description: API Gateway to proxy OIDC discovery requests
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  OIDCProxyWellKnownResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !GetAtt OIDCProxyAPI.RootResourceId
+      PathPart: ".well-known"
+
+  OIDCProxyConfigResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !Ref OIDCProxyWellKnownResource
+      PathPart: "openid-configuration"
+
+  OIDCProxyMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ResourceId: !Ref OIDCProxyConfigResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
+
+  OIDCProxyDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: OIDCProxyMethod
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      StageName: prod
+
+  OIDCProxyLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OIDCProxyLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/GET/.well-known/openid-configuration"
+
+  # DNS Record for OIDC Proxy API
+  DNSRecordOIDCProxy:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !If
+        - AutoDiscoverHostedZone
+        - !GetAtt HostedZoneDiscovery.HostedZoneId
+        - !Ref HostedZoneId
+      Name: !Sub "auth-oidc.${DomainName}"
+      Type: A
+      AliasTarget:
+        DNSName: !Sub "${OIDCProxyAPI}.execute-api.${AWS::Region}.amazonaws.com"
+        HostedZoneId: !If
+          - AutoDiscoverHostedZone
+          - !GetAtt HostedZoneDiscovery.HostedZoneId
+          - !Ref HostedZoneId
+        EvaluateTargetHealth: false
 
   # Lambda Authorizer for ALB JWT validation
   ALBAuthorizerRole:
