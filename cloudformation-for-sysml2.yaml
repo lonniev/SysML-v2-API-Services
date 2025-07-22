@@ -86,6 +86,31 @@ Parameters:
     Description: ARN of an existing secret (required if SecretsOption is UseExisting)
     Default: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:dummy'
 
+Mappings:
+  RegionToHostedZoneId:
+    us-east-1:
+      APIGateway: Z1UJRXOUMOOFQ8
+    us-east-2:
+      APIGateway: ZOJJZC49E0EPZ
+    us-west-1:
+      APIGateway: Z2MUQ32089INYE
+    us-west-2:
+      APIGateway: Z2OJLYMUO9EFXC
+    ca-central-1:
+      APIGateway: Z19DQILCV0OWEC
+    eu-west-1:
+      APIGateway: ZLY8HYME6SFDD
+    eu-west-2:
+      APIGateway: ZJ5UAJN8Y3Z2Q
+    eu-west-3:
+      APIGateway: Z3KY65QIEKYHQQ
+    eu-central-1:
+      APIGateway: Z1U9ULNL0V5AJ3
+    # Add other regions as needed
+    # CloudFront is global and always uses this ID
+    global:
+      CloudFront: Z2FDTNDATAQYW2
+
 Conditions:
   CreateNewSecret: !Equals [!Ref SecretsOption, CreateNew]
   UseExistingCertificate: !Equals [!Ref CertificateOption, Existing]
@@ -911,7 +936,8 @@ Resources:
       Type: A
       AliasTarget:
         DNSName: !GetAtt CognitoCustomDomain.CloudFrontDistribution
-        HostedZoneId: "Z2FDTNDATAQYW2" # CloudFront hosted zone ID
+        # CloudFront is global and always uses the same hosted zone ID
+        HostedZoneId: !FindInMap [RegionToHostedZoneId, global, CloudFront]
         EvaluateTargetHealth: false
         
   # Lambda function to wait for Cognito domain verification
@@ -1286,6 +1312,7 @@ Resources:
   DNSRecordOIDCProxy:
     Type: AWS::Route53::RecordSet
     Properties:
+      # This is YOUR hosted zone where the record will be created
       HostedZoneId: !If
         - AutoDiscoverHostedZone
         - !GetAtt HostedZoneDiscovery.HostedZoneId
@@ -1293,11 +1320,10 @@ Resources:
       Name: !Sub "auth-oidc.${DomainName}"
       Type: A
       AliasTarget:
+        # This is the API Gateway endpoint that the alias will point to
         DNSName: !Sub "${OIDCProxyAPI}.execute-api.${AWS::Region}.amazonaws.com"
-        HostedZoneId: !If
-          - AutoDiscoverHostedZone
-          - !GetAtt HostedZoneDiscovery.HostedZoneId
-          - !Ref HostedZoneId
+        # Use the region-specific hosted zone ID for API Gateway from our mapping
+        HostedZoneId: !FindInMap [RegionToHostedZoneId, !Ref "AWS::Region", APIGateway]
         EvaluateTargetHealth: false
 
   # Lambda Authorizer for ALB JWT validation
