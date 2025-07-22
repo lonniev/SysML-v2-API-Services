@@ -1038,9 +1038,14 @@ Resources:
               
               # Get the path from the event
               path = event.get('path', '')
+              method = event.get('httpMethod', 'GET')
+              query_params = event.get('queryStringParameters', {})
+              headers = event.get('headers', {})
+              body = event.get('body', '')
               
-              # Map the custom domain URL to the Cognito URL
+              # Map paths to Cognito endpoints
               if path == '/.well-known/openid-configuration':
+                  # OIDC Discovery endpoint
                   cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
                   
                   try:
@@ -1071,12 +1076,67 @@ Resources:
                           'statusCode': 500,
                           'body': json.dumps({'error': str(e)})
                       }
+              elif path == '/oauth2/token':
+                  # Token endpoint
+                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/oauth2/token"
+                  return proxy_request(cognito_url, method, headers, query_params, body)
+              elif path == '/oauth2/userInfo':
+                  # UserInfo endpoint
+                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/oauth2/userInfo"
+                  return proxy_request(cognito_url, method, headers, query_params, body)
+              elif path == '/oauth2/authorize':
+                  # Authorization endpoint
+                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/oauth2/authorize"
+                  return proxy_request(cognito_url, method, headers, query_params, body)
+              elif path == '/oauth2/revoke':
+                  # Revocation endpoint
+                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/oauth2/revoke"
+                  return proxy_request(cognito_url, method, headers, query_params, body)
               
               # Handle other OIDC endpoints if needed
               return {
                   'statusCode': 404,
                   'body': json.dumps({'error': 'Not Found'})
               }
+              
+          def proxy_request(url, method, headers, query_params, body):
+              try:
+                  # Build query string
+                  query_string = ''
+                  if query_params:
+                      query_string = '?' + '&'.join([f"{k}={v}" for k, v in query_params.items()])
+                  
+                  # Create request
+                  req = urllib.request.Request(url + query_string, method=method)
+                  
+                  # Add headers
+                  for header, value in headers.items():
+                      if header.lower() not in ['host', 'content-length']:
+                          req.add_header(header, value)
+                  
+                  # Add body for POST/PUT requests
+                  if method in ['POST', 'PUT'] and body:
+                      req.data = body.encode('utf-8')
+                  
+                  # Send request
+                  response = urllib.request.urlopen(req)
+                  
+                  # Get response
+                  response_body = response.read().decode('utf-8')
+                  response_headers = dict(response.getheaders())
+                  
+                  # Return response
+                  return {
+                      'statusCode': response.status,
+                      'headers': response_headers,
+                      'body': response_body
+                  }
+              except Exception as e:
+                  print(f'Error: {str(e)}')
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
 
   OIDCProxyAPI:
     Type: AWS::ApiGateway::RestApi
@@ -1087,6 +1147,7 @@ Resources:
         Types:
           - REGIONAL
 
+  # Resources for OIDC discovery endpoint
   OIDCProxyWellKnownResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -1101,7 +1162,7 @@ Resources:
       ParentId: !Ref OIDCProxyWellKnownResource
       PathPart: "openid-configuration"
 
-  OIDCProxyMethod:
+  OIDCProxyDiscoveryMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref OIDCProxyAPI
@@ -1112,10 +1173,103 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
+        
+  # Resources for OAuth2 endpoints
+  OIDCProxyOAuth2Resource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !GetAtt OIDCProxyAPI.RootResourceId
+      PathPart: "oauth2"
+      
+  # Token endpoint
+  OIDCProxyTokenResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !Ref OIDCProxyOAuth2Resource
+      PathPart: "token"
+      
+  OIDCProxyTokenMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ResourceId: !Ref OIDCProxyTokenResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
+        
+  # UserInfo endpoint
+  OIDCProxyUserInfoResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !Ref OIDCProxyOAuth2Resource
+      PathPart: "userInfo"
+      
+  OIDCProxyUserInfoMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ResourceId: !Ref OIDCProxyUserInfoResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
+        
+  # Authorize endpoint
+  OIDCProxyAuthorizeResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !Ref OIDCProxyOAuth2Resource
+      PathPart: "authorize"
+      
+  OIDCProxyAuthorizeMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ResourceId: !Ref OIDCProxyAuthorizeResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
+        
+  # Revoke endpoint
+  OIDCProxyRevokeResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !Ref OIDCProxyOAuth2Resource
+      PathPart: "revoke"
+      
+  OIDCProxyRevokeMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ResourceId: !Ref OIDCProxyRevokeResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
 
   OIDCProxyDeployment:
     Type: AWS::ApiGateway::Deployment
-    DependsOn: OIDCProxyMethod
+    DependsOn: 
+      - OIDCProxyDiscoveryMethod
+      - OIDCProxyTokenMethod
+      - OIDCProxyUserInfoMethod
+      - OIDCProxyAuthorizeMethod
+      - OIDCProxyRevokeMethod
     Properties:
       RestApiId: !Ref OIDCProxyAPI
       StageName: prod
@@ -1126,7 +1280,7 @@ Resources:
       FunctionName: !Ref OIDCProxyLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/GET/.well-known/openid-configuration"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/*"
 
   # DNS Record for OIDC Proxy API
   DNSRecordOIDCProxy:
