@@ -504,6 +504,57 @@ Resources:
           Value: 300
 
       
+  # CloudFront Function to handle OIDC discovery endpoint
+  OIDCDiscoveryFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${AWS::StackName}-oidc-discovery"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: "Function to handle OIDC discovery endpoint"
+        Runtime: cloudfront-js-1.0
+      FunctionCode: !Sub |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          
+          // Handle OIDC discovery endpoint
+          if (uri === '/.well-known/openid-configuration') {
+            // Create a response with the OIDC configuration
+            var region = '${AWS::Region}';
+            var userPoolId = '${UserPool}';
+            var domain = 'auth.${DomainName}';
+            
+            // Create the OIDC configuration
+            var config = {
+              "issuer": "https://" + domain,
+              "authorization_endpoint": "https://" + domain + "/oauth2/authorize",
+              "token_endpoint": "https://" + domain + "/oauth2/token",
+              "userinfo_endpoint": "https://" + domain + "/oauth2/userInfo",
+              "jwks_uri": "https://cognito-idp." + region + ".amazonaws.com/" + userPoolId + "/.well-known/jwks.json",
+              "response_types_supported": ["code", "token", "id_token", "code token", "code id_token", "token id_token", "code token id_token"],
+              "subject_types_supported": ["public"],
+              "id_token_signing_alg_values_supported": ["RS256"],
+              "scopes_supported": ["openid", "email", "phone", "profile"],
+              "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post"],
+              "claims_supported": ["sub", "aud", "email", "email_verified", "phone_number", "phone_number_verified", "name", "profile", "given_name", "family_name", "middle_name", "nickname", "preferred_username", "updated_at"]
+            };
+            
+            return {
+              statusCode: 200,
+              statusDescription: "OK",
+              headers: {
+                "content-type": { value: "application/json" },
+                "cache-control": { value: "max-age=3600" }
+              },
+              body: JSON.stringify(config)
+            };
+          }
+          
+          // For all other requests, pass through to Cognito
+          return request;
+        }
+
   # Cognito Custom Domain for OIDC endpoints
   CognitoCustomDomain:
     Type: AWS::Cognito::UserPoolDomain
@@ -1024,6 +1075,139 @@ Resources:
       ServiceToken: !GetAtt CognitoDomainVerifierLambda.Arn
       Domain: !Sub "auth.${DomainName}"
       
+  # Lambda function to associate CloudFront Function with Cognito domain's CloudFront distribution
+  CloudFrontFunctionAssociatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CloudFrontAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:DescribeUserPoolDomain
+                  - cloudfront:GetDistribution
+                  - cloudfront:UpdateDistribution
+                  - cloudfront:GetDistributionConfig
+                  - cloudfront:ListDistributions
+                Resource: '*'
+
+  CloudFrontFunctionAssociatorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-cloudfront-function-associator'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt CloudFrontFunctionAssociatorRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          import time
+          
+          def lambda_handler(event, context):
+              cognito = boto3.client('cognito-idp')
+              cloudfront = boto3.client('cloudfront')
+              
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      domain = event['ResourceProperties']['Domain']
+                      function_arn = event['ResourceProperties']['FunctionARN']
+                      
+                      # Get the CloudFront distribution ID from Cognito domain
+                      max_attempts = 60  # 5 minutes with 5 second intervals
+                      distribution_id = None
+                      
+                      for attempt in range(max_attempts):
+                          try:
+                              response = cognito.describe_user_pool_domain(
+                                  Domain=domain
+                              )
+                              
+                              if 'DomainDescription' in response and 'CloudFrontDistribution' in response['DomainDescription']:
+                                  # Extract distribution ID from ARN
+                                  cf_arn = response['DomainDescription']['CloudFrontDistribution']
+                                  distribution_id = cf_arn.split('/')[-1]
+                                  print(f"Found CloudFront distribution ID: {distribution_id}")
+                                  break
+                          except Exception as e:
+                              print(f"Error checking domain: {str(e)}")
+                          
+                          # Wait before next attempt
+                          time.sleep(5)
+                      
+                      if not distribution_id:
+                          cfnresponse.send(event, context, cfnresponse.FAILED, 
+                                         {'Message': f"Could not find CloudFront distribution for domain {domain}"})
+                          return
+                      
+                      # Get the current distribution config
+                      response = cloudfront.get_distribution_config(
+                          Id=distribution_id
+                      )
+                      
+                      etag = response['ETag']
+                      config = response['DistributionConfig']
+                      
+                      # Add the function association
+                      if 'DefaultCacheBehavior' in config:
+                          if 'FunctionAssociations' not in config['DefaultCacheBehavior']:
+                              config['DefaultCacheBehavior']['FunctionAssociations'] = {
+                                  'Quantity': 0,
+                                  'Items': []
+                              }
+                          
+                          # Add or update the function association
+                          function_associations = config['DefaultCacheBehavior']['FunctionAssociations']
+                          function_associations['Quantity'] = 1
+                          function_associations['Items'] = [{
+                              'EventType': 'viewer-request',
+                              'FunctionARN': function_arn
+                          }]
+                      
+                      # Update the distribution
+                      try:
+                          cloudfront.update_distribution(
+                              Id=distribution_id,
+                              IfMatch=etag,
+                              DistributionConfig=config
+                          )
+                          print(f"Successfully associated function with distribution {distribution_id}")
+                          cfnresponse.send(event, context, cfnresponse.SUCCESS, 
+                                         {'Message': f"Function associated with distribution {distribution_id}"})
+                      except Exception as e:
+                          print(f"Error updating distribution: {str(e)}")
+                          cfnresponse.send(event, context, cfnresponse.FAILED, 
+                                         {'Message': f"Error updating distribution: {str(e)}"})
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      
+              except Exception as e:
+                  print(f'Error: {str(e)}')
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  CloudFrontFunctionAssociator:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: 
+      - CognitoDomainVerifier
+      - OIDCDiscoveryFunction
+    Properties:
+      ServiceToken: !GetAtt CloudFrontFunctionAssociatorLambda.Arn
+      Domain: !Sub "auth.${DomainName}"
+      FunctionARN: !GetAtt OIDCDiscoveryFunction.FunctionARN
+      
   # Lambda function to proxy OIDC discovery requests
   OIDCProxyRole:
     Type: AWS::IAM::Role
@@ -1308,23 +1492,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/*"
 
-  # DNS Record for OIDC Proxy API
-  DNSRecordOIDCProxy:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      # This is YOUR hosted zone where the record will be created
-      HostedZoneId: !If
-        - AutoDiscoverHostedZone
-        - !GetAtt HostedZoneDiscovery.HostedZoneId
-        - !Ref HostedZoneId
-      Name: !Sub "auth-oidc.${DomainName}"
-      Type: A
-      AliasTarget:
-        # This is the API Gateway endpoint that the alias will point to
-        DNSName: !Sub "${OIDCProxyAPI}.execute-api.${AWS::Region}.amazonaws.com"
-        # Use the region-specific hosted zone ID for API Gateway from our mapping
-        HostedZoneId: !FindInMap [RegionToHostedZoneId, !Ref "AWS::Region", APIGateway]
-        EvaluateTargetHealth: false
 
   # Lambda Authorizer for ALB JWT validation
   ALBAuthorizerRole:
