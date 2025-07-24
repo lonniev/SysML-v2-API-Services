@@ -8,7 +8,7 @@ Parameters:
     Type: String
     Default: "sysmlv2auth"
     Description: Domain prefix for Cognito User Pool domain (must be unique across AWS and contain only lowercase letters, numbers, and hyphens)
-    AllowedPattern: "^[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$"
+    AllowedPattern: ^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$
     ConstraintDescription: "Must contain only lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen"
   
   DBName:
@@ -1132,13 +1132,9 @@ Resources:
       RequestParameters:
         method.request.path.proxy: true
       Integration:
-        Type: HTTP_PROXY
-        IntegrationHttpMethod: ANY
-        Uri: !Sub "https://${UserPool}.auth.${AWS::Region}.amazoncognito.com/oauth2/{proxy}"
-        RequestParameters:
-          integration.request.path.proxy: method.request.path.proxy
-        IntegrationResponses:
-          - StatusCode: 200
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
 
   # Deployment for OIDC proxy API
   OIDCProxyDeployment:
@@ -1321,150 +1317,7 @@ Resources:
                       'body': json.dumps({'error': str(e)})
                   }
 
-  OIDCProxyAPI:
-    Type: AWS::ApiGateway::RestApi
-    Properties:
-      Name: !Sub "${AWS::StackName}-oidc-proxy"
-      Description: API Gateway to proxy OIDC discovery requests
-      EndpointConfiguration:
-        Types:
-          - REGIONAL
-
-  # Resources for OIDC discovery endpoint
-  OIDCProxyWellKnownResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ParentId: !GetAtt OIDCProxyAPI.RootResourceId
-      PathPart: ".well-known"
-
-  OIDCProxyConfigResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ParentId: !Ref OIDCProxyWellKnownResource
-      PathPart: "openid-configuration"
-
-  OIDCProxyDiscoveryMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ResourceId: !Ref OIDCProxyConfigResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
-        
-  # Resources for OAuth2 endpoints
-  OIDCProxyOAuth2Resource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ParentId: !GetAtt OIDCProxyAPI.RootResourceId
-      PathPart: "oauth2"
-      
-  # Token endpoint
-  OIDCProxyTokenResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ParentId: !Ref OIDCProxyOAuth2Resource
-      PathPart: "token"
-      
-  OIDCProxyTokenMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ResourceId: !Ref OIDCProxyTokenResource
-      HttpMethod: POST
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
-        
-  # UserInfo endpoint
-  OIDCProxyUserInfoResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ParentId: !Ref OIDCProxyOAuth2Resource
-      PathPart: "userInfo"
-      
-  OIDCProxyUserInfoMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ResourceId: !Ref OIDCProxyUserInfoResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
-        
-  # Authorize endpoint
-  OIDCProxyAuthorizeResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ParentId: !Ref OIDCProxyOAuth2Resource
-      PathPart: "authorize"
-      
-  OIDCProxyAuthorizeMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ResourceId: !Ref OIDCProxyAuthorizeResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
-        
-  # Revoke endpoint
-  OIDCProxyRevokeResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ParentId: !Ref OIDCProxyOAuth2Resource
-      PathPart: "revoke"
-      
-  OIDCProxyRevokeMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      ResourceId: !Ref OIDCProxyRevokeResource
-      HttpMethod: POST
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
-
-  OIDCProxyDeployment:
-    Type: AWS::ApiGateway::Deployment
-    DependsOn: 
-      - OIDCProxyDiscoveryMethod
-      - OIDCProxyTokenMethod
-      - OIDCProxyUserInfoMethod
-      - OIDCProxyAuthorizeMethod
-      - OIDCProxyRevokeMethod
-    Properties:
-      RestApiId: !Ref OIDCProxyAPI
-      StageName: prod
-
-  OIDCProxyLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref OIDCProxyLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/*"
-
+ 
 
   # Lambda Authorizer for ALB JWT validation
   ALBAuthorizerRole:
