@@ -738,20 +738,44 @@ Resources:
       ServiceToken: !GetAtt HostedZoneDiscoveryLambda.Arn
       DomainName: !Ref DomainName
 
-  # DNS Record for API (primary) - points to API Gateway
+  # Custom domain for API Gateway
+  APIGatewayDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      RegionalCertificateArn: !If
+        - UseExistingCertificate
+        - !Ref ExistingCertificateArn
+        - !Ref NewCertificate
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      SecurityPolicy: TLS_1_2
+
+  # Base path mapping for API Gateway
+  APIGatewayBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: APIGatewayDeployment
+    Properties:
+      DomainName: !Ref APIGatewayDomain
+      RestApiId: !Ref APIGateway
+      Stage: prod
+
+  # DNS Record for API (primary) - points to API Gateway custom domain
   DNSRecordAPI:
     Type: AWS::Route53::RecordSet
-    DependsOn: APIGateway
+    DependsOn: APIGatewayDomain
     Properties:
       HostedZoneId: !If
         - AutoDiscoverHostedZone
         - !GetAtt HostedZoneDiscovery.HostedZoneId
         - !Ref HostedZoneId
       Name: !Ref DomainName
-      Type: CNAME
-      TTL: 300
-      ResourceRecords:
-        - !Sub "${APIGateway}.execute-api.${AWS::Region}.amazonaws.com"
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt APIGatewayDomain.RegionalDomainName
+        HostedZoneId: !GetAtt APIGatewayDomain.RegionalHostedZoneId
+        EvaluateTargetHealth: false
 
   # URL Rewrite Function for /docs endpoint
   URLRewriteFunction:
@@ -1154,6 +1178,15 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/GET/.well-known/openid-configuration"
+
+  # Permission for OAuth2 proxy Lambda
+  OIDCProxyLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OIDCProxyLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/*"
 
   # Custom domain for OIDC proxy API
   OIDCProxyDomain:
