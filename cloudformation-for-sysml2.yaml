@@ -504,68 +504,74 @@ Resources:
           Value: 300
 
       
-  # CloudFront Function to handle OIDC discovery endpoint
-  OIDCDiscoveryFunction:
-    Type: AWS::CloudFront::Function
+  # Simple Lambda function to serve OIDC configuration
+  OIDCConfigLambdaRole:
+    Type: AWS::IAM::Role
     Properties:
-      Name: !Sub "${AWS::StackName}-oidc-discovery"
-      AutoPublish: true
-      FunctionConfig:
-        Comment: "Function to handle OIDC discovery endpoint"
-        Runtime: cloudfront-js-1.0
-      FunctionCode: !Sub |
-        function handler(event) {
-          var request = event.request;
-          var uri = request.uri;
-          
-          // Handle OIDC discovery endpoint
-          if (uri === '/.well-known/openid-configuration') {
-            // Create a response with the OIDC configuration
-            var region = '${AWS::Region}';
-            var userPoolId = '${UserPool}';
-            var domain = 'auth.${DomainName}';
-            
-            // Create the OIDC configuration
-            var config = {
-              "issuer": "https://" + domain,
-              "authorization_endpoint": "https://" + domain + "/oauth2/authorize",
-              "token_endpoint": "https://" + domain + "/oauth2/token",
-              "userinfo_endpoint": "https://" + domain + "/oauth2/userInfo",
-              "jwks_uri": "https://cognito-idp." + region + ".amazonaws.com/" + userPoolId + "/.well-known/jwks.json",
-              "response_types_supported": ["code", "token", "id_token", "code token", "code id_token", "token id_token", "code token id_token"],
-              "subject_types_supported": ["public"],
-              "id_token_signing_alg_values_supported": ["RS256"],
-              "scopes_supported": ["openid", "email", "phone", "profile"],
-              "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post"],
-              "claims_supported": ["sub", "aud", "email", "email_verified", "phone_number", "phone_number_verified", "name", "profile", "given_name", "family_name", "middle_name", "nickname", "preferred_username", "updated_at"]
-            };
-            
-            return {
-              statusCode: 200,
-              statusDescription: "OK",
-              headers: {
-                "content-type": { value: "application/json" },
-                "cache-control": { value: "max-age=3600" }
-              },
-              body: JSON.stringify(config)
-            };
-          }
-          
-          // For all other requests, pass through to Cognito
-          return request;
-        }
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  # Cognito Custom Domain for OIDC endpoints
-  CognitoCustomDomain:
+  OIDCConfigLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-oidc-config'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt OIDCConfigLambdaRole.Arn
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          REGION: !Ref AWS::Region
+          DOMAIN_NAME: !Sub "auth.${DomainName}"
+          COGNITO_DOMAIN: !Sub "${AWS::StackName}-auth-domain.auth.${AWS::Region}.amazoncognito.com"
+      Code:
+        ZipFile: |
+          import json
+          import os
+          
+          def lambda_handler(event, context):
+              region = os.environ['REGION']
+              user_pool_id = os.environ['USER_POOL_ID']
+              domain_name = os.environ['DOMAIN_NAME']
+              cognito_domain = os.environ['COGNITO_DOMAIN']
+              
+              # Create the OIDC configuration
+              config = {
+                  "issuer": f"https://{cognito_domain}",
+                  "authorization_endpoint": f"https://{domain_name}/oauth2/authorize",
+                  "token_endpoint": f"https://{domain_name}/oauth2/token",
+                  "userinfo_endpoint": f"https://{domain_name}/oauth2/userInfo",
+                  "jwks_uri": f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/jwks.json",
+                  "response_types_supported": ["code", "token", "id_token", "code token", "code id_token", "token id_token", "code token id_token"],
+                  "subject_types_supported": ["public"],
+                  "id_token_signing_alg_values_supported": ["RS256"],
+                  "scopes_supported": ["openid", "email", "phone", "profile"],
+                  "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post"],
+                  "claims_supported": ["sub", "aud", "email", "email_verified", "phone_number", "phone_number_verified", "name", "profile", "given_name", "family_name", "middle_name", "nickname", "preferred_username", "updated_at"]
+              }
+              
+              return {
+                  'statusCode': 200,
+                  'headers': {
+                      'Content-Type': 'application/json',
+                      'Access-Control-Allow-Origin': '*'
+                  },
+                  'body': json.dumps(config)
+              }
+
+  # Cognito Domain (using default Cognito domain)
+  CognitoDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
-      Domain: !Sub "auth.${DomainName}"
+      Domain: !Sub "${AWS::StackName}-auth-domain"
       UserPoolId: !Ref UserPool
-      CustomDomainConfig:
-        CertificateArn: !If
-          - UseExistingCertificate
-          - !Ref ExistingCertificateArn
-          - !Ref NewCertificate
 
   ALBAuthenticationRole:
     Type: AWS::IAM::Role
@@ -592,8 +598,8 @@ Resources:
   HTTPSListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     DependsOn:
-      - CognitoCustomDomain
-      - CognitoDomainVerifier
+      - CognitoDomain
+      - OIDCProxyDomain
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: !Ref HttpsPort
@@ -609,11 +615,11 @@ Resources:
           AuthenticateCognitoConfig:
             UserPoolArn: !GetAtt UserPool.Arn
             UserPoolClientId: !Ref UserPoolClient
-            UserPoolDomain: !Sub "auth.${DomainName}"
+            UserPoolDomain: !Sub "${AWS::StackName}-auth-domain"
             OnUnauthenticatedRequest: authenticate
             SessionCookieName: AWSELBAuthSessionCookie
             SessionTimeout: 3600
-            Scope: "openid email profile"
+            Scope: "openid email profile"enid email profile"
         - Type: forward
           Order: 2
           TargetGroupArn: !Ref TargetGroup
@@ -1036,7 +1042,7 @@ Resources:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
           
-  # DNS Record for Cognito Custom Domain
+  # DNS Record for Auth Domain (points to API Gateway)
   DNSRecordAuth:
     Type: AWS::Route53::RecordSet
     Properties:
@@ -1047,227 +1053,126 @@ Resources:
       Name: !Sub "auth.${DomainName}"
       Type: A
       AliasTarget:
-        DNSName: !GetAtt CognitoCustomDomain.CloudFrontDistribution
-        # CloudFront is global and always uses the same hosted zone ID
-        HostedZoneId: !FindInMap [RegionToHostedZoneId, global, CloudFront]
+        DNSName: !GetAtt OIDCProxyDomain.RegionalDomainName
+        HostedZoneId: !GetAtt OIDCProxyDomain.RegionalHostedZoneId
         EvaluateTargetHealth: false
         
-  # Lambda function to wait for Cognito domain verification
-  CognitoDomainVerifierRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: CognitoAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cognito-idp:DescribeUserPoolDomain
-                Resource: '*'
-
-  CognitoDomainVerifierLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub '${AWS::StackName}-domain-verifier'
-      Runtime: python3.9
-      Handler: index.lambda_handler
-      Role: !GetAtt CognitoDomainVerifierRole.Arn
-      Timeout: 300
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          import cfnresponse
-          import time
-          
-          def lambda_handler(event, context):
-              cognito = boto3.client('cognito-idp')
-              
-              try:
-                  if event['RequestType'] in ['Create', 'Update']:
-                      domain = event['ResourceProperties']['Domain']
-                      max_attempts = 60  # 5 minutes with 5 second intervals
-                      
-                      for attempt in range(max_attempts):
-                          try:
-                              response = cognito.describe_user_pool_domain(
-                                  Domain=domain
-                              )
-                              
-                              status = response['DomainDescription'].get('Status')
-                              print(f"Attempt {attempt+1}: Domain status is {status}")
-                              
-                              if status == 'ACTIVE':
-                                  print(f"Domain {domain} is now active")
-                                  cfnresponse.send(event, context, cfnresponse.SUCCESS, 
-                                                 {'Message': f"Domain {domain} is active"})
-                                  return
-                              
-                          except Exception as e:
-                              print(f"Error checking domain status: {str(e)}")
-                          
-                          # Wait before next attempt
-                          time.sleep(5)
-                      
-                      # If we get here, verification timed out
-                      cfnresponse.send(event, context, cfnresponse.FAILED, 
-                                     {'Message': f"Domain {domain} verification timed out"})
-                  else:
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-                      
-              except Exception as e:
-                  print(f'Error: {str(e)}')
-                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
-
-  CognitoDomainVerifier:
-    Type: AWS::CloudFormation::CustomResource
-    DependsOn: DNSRecordAuth
-    Properties:
-      ServiceToken: !GetAtt CognitoDomainVerifierLambda.Arn
-      Domain: !Sub "auth.${DomainName}"
+  # No need for domain verification since we're using a default Cognito domain
       
-  # Lambda function to associate CloudFront Function with Cognito domain's CloudFront distribution
-  CloudFrontFunctionAssociatorRole:
-    Type: AWS::IAM::Role
+  # API Gateway for OIDC endpoints
+  OIDCProxyAPI:
+    Type: AWS::ApiGateway::RestApi
     Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: CloudFrontAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cognito-idp:DescribeUserPoolDomain
-                  - cloudfront:GetDistribution
-                  - cloudfront:UpdateDistribution
-                  - cloudfront:GetDistributionConfig
-                  - cloudfront:ListDistributions
-                Resource: '*'
+      Name: !Sub "${AWS::StackName}-oidc-proxy"
+      Description: API Gateway to proxy OIDC requests
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
 
-  CloudFrontFunctionAssociatorLambda:
-    Type: AWS::Lambda::Function
+  # Well-known resource
+  OIDCProxyWellKnownResource:
+    Type: AWS::ApiGateway::Resource
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-cloudfront-function-associator'
-      Runtime: python3.9
-      Handler: index.lambda_handler
-      Role: !GetAtt CloudFrontFunctionAssociatorRole.Arn
-      Timeout: 300
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          import cfnresponse
-          import time
-          
-          def lambda_handler(event, context):
-              cognito = boto3.client('cognito-idp')
-              cloudfront = boto3.client('cloudfront')
-              
-              try:
-                  if event['RequestType'] in ['Create', 'Update']:
-                      domain = event['ResourceProperties']['Domain']
-                      function_arn = event['ResourceProperties']['FunctionARN']
-                      
-                      # Get the CloudFront distribution ID from Cognito domain
-                      max_attempts = 60  # 5 minutes with 5 second intervals
-                      distribution_id = None
-                      
-                      for attempt in range(max_attempts):
-                          try:
-                              response = cognito.describe_user_pool_domain(
-                                  Domain=domain
-                              )
-                              
-                              if 'DomainDescription' in response and 'CloudFrontDistribution' in response['DomainDescription']:
-                                  # Extract distribution ID from ARN
-                                  cf_arn = response['DomainDescription']['CloudFrontDistribution']
-                                  distribution_id = cf_arn.split('/')[-1]
-                                  print(f"Found CloudFront distribution ID: {distribution_id}")
-                                  break
-                          except Exception as e:
-                              print(f"Error checking domain: {str(e)}")
-                          
-                          # Wait before next attempt
-                          time.sleep(5)
-                      
-                      if not distribution_id:
-                          cfnresponse.send(event, context, cfnresponse.FAILED, 
-                                         {'Message': f"Could not find CloudFront distribution for domain {domain}"})
-                          return
-                      
-                      # Get the current distribution config
-                      response = cloudfront.get_distribution_config(
-                          Id=distribution_id
-                      )
-                      
-                      etag = response['ETag']
-                      config = response['DistributionConfig']
-                      
-                      # Add the function association
-                      if 'DefaultCacheBehavior' in config:
-                          if 'FunctionAssociations' not in config['DefaultCacheBehavior']:
-                              config['DefaultCacheBehavior']['FunctionAssociations'] = {
-                                  'Quantity': 0,
-                                  'Items': []
-                              }
-                          
-                          # Add or update the function association
-                          function_associations = config['DefaultCacheBehavior']['FunctionAssociations']
-                          function_associations['Quantity'] = 1
-                          function_associations['Items'] = [{
-                              'EventType': 'viewer-request',
-                              'FunctionARN': function_arn
-                          }]
-                      
-                      # Update the distribution
-                      try:
-                          cloudfront.update_distribution(
-                              Id=distribution_id,
-                              IfMatch=etag,
-                              DistributionConfig=config
-                          )
-                          print(f"Successfully associated function with distribution {distribution_id}")
-                          cfnresponse.send(event, context, cfnresponse.SUCCESS, 
-                                         {'Message': f"Function associated with distribution {distribution_id}"})
-                      except Exception as e:
-                          print(f"Error updating distribution: {str(e)}")
-                          cfnresponse.send(event, context, cfnresponse.FAILED, 
-                                         {'Message': f"Error updating distribution: {str(e)}"})
-                  else:
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-                      
-              except Exception as e:
-                  print(f'Error: {str(e)}')
-                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !GetAtt OIDCProxyAPI.RootResourceId
+      PathPart: ".well-known"
 
-  CloudFrontFunctionAssociator:
-    Type: AWS::CloudFormation::CustomResource
+  # OpenID configuration resource
+  OIDCProxyOpenIDResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !Ref OIDCProxyWellKnownResource
+      PathPart: "openid-configuration"
+
+  # Method for OIDC configuration
+  OIDCProxyConfigMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ResourceId: !Ref OIDCProxyOpenIDResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCConfigLambda.Arn}/invocations"
+
+  # OAuth2 resource
+  OIDCProxyOAuth2Resource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !GetAtt OIDCProxyAPI.RootResourceId
+      PathPart: "oauth2"
+
+  # OAuth2 proxy with greedy path parameter
+  OIDCProxyOAuth2ProxyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ParentId: !Ref OIDCProxyOAuth2Resource
+      PathPart: "{proxy+}"
+
+  # Method for OAuth2 proxy
+  OIDCProxyOAuth2Method:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OIDCProxyAPI
+      ResourceId: !Ref OIDCProxyOAuth2ProxyResource
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.proxy: true
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: ANY
+        Uri: !Sub "https://${UserPool}.auth.${AWS::Region}.amazoncognito.com/oauth2/{proxy}"
+        RequestParameters:
+          integration.request.path.proxy: method.request.path.proxy
+        IntegrationResponses:
+          - StatusCode: 200
+
+  # Deployment for OIDC proxy API
+  OIDCProxyDeployment:
+    Type: AWS::ApiGateway::Deployment
     DependsOn: 
-      - CognitoDomainVerifier
-      - OIDCDiscoveryFunction
+      - OIDCProxyConfigMethod
+      - OIDCProxyOAuth2Method
     Properties:
-      ServiceToken: !GetAtt CloudFrontFunctionAssociatorLambda.Arn
-      Domain: !Sub "auth.${DomainName}"
-      FunctionARN: !GetAtt OIDCDiscoveryFunction.FunctionARN
+      RestApiId: !Ref OIDCProxyAPI
+      StageName: prod
+
+  # Permission for Lambda to be invoked by API Gateway
+  OIDCConfigLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OIDCConfigLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/GET/.well-known/openid-configuration"
+
+  # Custom domain for OIDC proxy API
+  OIDCProxyDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Sub "auth.${DomainName}"
+      RegionalCertificateArn: !If
+        - UseExistingCertificate
+        - !Ref ExistingCertificateArn
+        - !Ref NewCertificate
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      SecurityPolicy: TLS_1_2
+
+  # Base path mapping for OIDC proxy API
+  OIDCProxyBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref OIDCProxyDomain
+      RestApiId: !Ref OIDCProxyAPI
+      Stage: prod
       
   # Lambda function to proxy OIDC discovery requests
   OIDCProxyRole:
