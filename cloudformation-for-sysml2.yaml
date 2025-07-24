@@ -4,6 +4,13 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS Marketplace Service with Aurora PostgreSQL, ECS Fargate, HTTPS ALB, and Secrets Manager (Custom Defaults)
 
 Parameters:
+  CognitoDomainName:
+    Type: String
+    Default: "sysmlv2auth"
+    Description: Domain prefix for Cognito User Pool domain (must be unique across AWS and contain only lowercase letters, numbers, and hyphens)
+    AllowedPattern: "^[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$"
+    ConstraintDescription: "Must contain only lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen"
+  
   DBName:
     Type: String
     Default: sysml2
@@ -530,7 +537,7 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           REGION: !Ref AWS::Region
           DOMAIN_NAME: !Sub "auth.${DomainName}"
-          COGNITO_DOMAIN: !Sub "${AWS::StackName}-auth-domain.auth.${AWS::Region}.amazoncognito.com"
+          COGNITO_DOMAIN: !Sub "${CognitoDomainName}.auth.${AWS::Region}.amazoncognito.com"
       Code:
         ZipFile: |
           import json
@@ -570,7 +577,7 @@ Resources:
   CognitoDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
-      Domain: !Sub "${AWS::StackName}-auth-domain"
+      Domain: !Ref CognitoDomainName
       UserPoolId: !Ref UserPool
 
   ALBAuthenticationRole:
@@ -615,11 +622,11 @@ Resources:
           AuthenticateCognitoConfig:
             UserPoolArn: !GetAtt UserPool.Arn
             UserPoolClientId: !Ref UserPoolClient
-            UserPoolDomain: !Sub "${AWS::StackName}-auth-domain"
+            UserPoolDomain: !Ref CognitoDomainName
             OnUnauthenticatedRequest: authenticate
             SessionCookieName: AWSELBAuthSessionCookie
             SessionTimeout: 3600
-            Scope: "openid email profile"enid email profile"
+            Scope: "openid email profile"
         - Type: forward
           Order: 2
           TargetGroupArn: !Ref TargetGroup
