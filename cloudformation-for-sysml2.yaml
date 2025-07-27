@@ -1387,6 +1387,7 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           REGION: !Ref AWS::Region
           DOMAIN_NAME: !Sub "auth.${DomainName}"
+          COGNITO_DOMAIN: !Ref CognitoDomainName
       Code:
         ZipFile: |
           import json
@@ -1398,6 +1399,7 @@ Resources:
               region = os.environ['REGION']
               user_pool_id = os.environ['USER_POOL_ID']
               domain_name = os.environ['DOMAIN_NAME']
+              cognito_domain = os.environ['COGNITO_DOMAIN']
               
               # Get the path from the event
               path = event.get('path', '')
@@ -1441,19 +1443,19 @@ Resources:
                       }
               elif path == '/oauth2/token':
                   # Token endpoint
-                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/oauth2/token"
+                  cognito_url = f"https://{cognito_domain}.auth.{region}.amazoncognito.com/oauth2/token"
                   return proxy_request(cognito_url, method, headers, query_params, body)
               elif path == '/oauth2/userInfo':
                   # UserInfo endpoint
-                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/oauth2/userInfo"
+                  cognito_url = f"https://{cognito_domain}.auth.{region}.amazoncognito.com/oauth2/userInfo"
                   return proxy_request(cognito_url, method, headers, query_params, body)
               elif path == '/oauth2/authorize':
                   # Authorization endpoint
-                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/oauth2/authorize"
+                  cognito_url = f"https://{cognito_domain}.auth.{region}.amazoncognito.com/oauth2/authorize"
                   return proxy_request(cognito_url, method, headers, query_params, body)
               elif path == '/oauth2/revoke':
                   # Revocation endpoint
-                  cognito_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/oauth2/revoke"
+                  cognito_url = f"https://{cognito_domain}.auth.{region}.amazoncognito.com/oauth2/revoke"
                   return proxy_request(cognito_url, method, headers, query_params, body)
               
               # Handle other OIDC endpoints if needed
