@@ -1450,9 +1450,20 @@ Resources:
                   cognito_url = f"https://{cognito_domain}.auth.{region}.amazoncognito.com/oauth2/userInfo"
                   return proxy_request(cognito_url, method, headers, query_params, body)
               elif path == '/oauth2/authorize':
-                  # Authorization endpoint
-                  cognito_url = f"https://{cognito_domain}.auth.{region}.amazoncognito.com/oauth2/authorize"
-                  return proxy_request(cognito_url, method, headers, query_params, body)
+                  # Authorization endpoint - redirect instead of proxy
+                  query_string = ''
+                  if query_params:
+                      query_string = '?' + '&'.join([f"{k}={v}" for k, v in query_params.items()])
+                  
+                  cognito_url = f"https://{cognito_domain}.auth.{region}.amazoncognito.com/oauth2/authorize{query_string}"
+                  
+                  return {
+                      'statusCode': 302,
+                      'headers': {
+                          'Location': cognito_url
+                      },
+                      'body': ''
+                  }
               elif path == '/oauth2/revoke':
                   # Revocation endpoint
                   cognito_url = f"https://{cognito_domain}.auth.{region}.amazoncognito.com/oauth2/revoke"
