@@ -126,6 +126,10 @@ Conditions:
   AutoDiscoverHostedZone: !Equals [!Ref HostedZoneId, ""]
 
 Resources:
+  # VPC - Virtual Private Cloud
+  # Purpose: Creates isolated network environment for all resources
+  # Depends on: None (foundational resource)
+  # Dependents: All subnet, security group, and networking resources
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -136,6 +140,10 @@ Resources:
         - Key: Name
           Value: AppVPC
 
+  # PublicSubnet1 - First public subnet in AZ1
+  # Purpose: Hosts ALB and provides internet access for ECS tasks
+  # Depends on: VPC
+  # Dependents: ALB, ECS Service, PublicSubnetRouteTableAssociation1
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -146,6 +154,10 @@ Resources:
         - Key: Name
           Value: PublicSubnet1
 
+  # PublicSubnet2 - Second public subnet in AZ2
+  # Purpose: Provides high availability for ALB and ECS tasks
+  # Depends on: VPC
+  # Dependents: ALB, ECS Service, PublicSubnetRouteTableAssociation2
   PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
@@ -156,6 +168,10 @@ Resources:
         - Key: Name
           Value: PublicSubnet2
 
+  # PrivateSubnet1 - First private subnet in AZ1
+  # Purpose: Hosts Aurora database instances (no internet access)
+  # Depends on: VPC
+  # Dependents: DBSubnetGroup, AuroraCluster
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -166,6 +182,10 @@ Resources:
         - Key: Name
           Value: PrivateSubnet1
 
+  # PrivateSubnet2 - Second private subnet in AZ2
+  # Purpose: Provides high availability for Aurora database
+  # Depends on: VPC
+  # Dependents: DBSubnetGroup, AuroraCluster
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
@@ -176,6 +196,8 @@ Resources:
         - Key: Name
           Value: PrivateSubnet2
 
+  # InternetGateway - Provides internet access to VPC
+  # Dependents: AttachGateway, PublicRoute
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -183,12 +205,18 @@ Resources:
         - Key: Name
           Value: AppIGW
 
+  # AttachGateway - Attaches internet gateway to VPC
+  # Depends on: VPC, InternetGateway
+  # Dependents: PublicRoute
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
+  # PublicRouteTable - Route table for public subnets
+  # Depends on: VPC
+  # Dependents: PublicRoute, PublicSubnetRouteTableAssociation1, PublicSubnetRouteTableAssociation2
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -197,6 +225,9 @@ Resources:
         - Key: Name
           Value: PublicRouteTable
 
+  # PublicRoute - Route to internet gateway for public subnets
+  # Depends on: AttachGateway, PublicRouteTable, InternetGateway
+  # Dependents: PublicSubnetRouteTableAssociation1, PublicSubnetRouteTableAssociation2
   PublicRoute:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
@@ -205,6 +236,9 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
+  # PublicSubnetRouteTableAssociation1 - Associates PublicSubnet1 with public route table
+  # Depends on: PublicRoute, PublicSubnet1, PublicRouteTable
+  # Dependents: ApplicationLoadBalancer
   PublicSubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     DependsOn: PublicRoute
@@ -212,6 +246,9 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
+  # PublicSubnetRouteTableAssociation2 - Associates PublicSubnet2 with public route table
+  # Depends on: PublicRoute, PublicSubnet2, PublicRouteTable
+  # Dependents: ApplicationLoadBalancer
   PublicSubnetRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     DependsOn: PublicRoute
@@ -219,6 +256,9 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
+  # DBSubnetGroup - Subnet group for Aurora database cluster
+  # Depends on: PrivateSubnet1, PrivateSubnet2
+  # Dependents: AuroraCluster, AuroraInstance
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
@@ -227,6 +267,9 @@ Resources:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
 
+  # DBSecurityGroup - Security group allowing ECS access to Aurora database
+  # Depends on: VPC, ECSSecurityGroup
+  # Dependents: AuroraCluster
   DBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -238,6 +281,8 @@ Resources:
           ToPort: !Ref PostgresPort
           SourceSecurityGroupId: !Ref ECSSecurityGroup
 
+  # DatabaseSecret - Stores Aurora database credentials securely
+  # Dependents: AuroraCluster, TaskDefinition, ECSTaskRole
   DatabaseSecret:
     Type: AWS::SecretsManager::Secret
     Condition: CreateNewSecret
@@ -248,6 +293,9 @@ Resources:
         - Key: Name
           Value: AuroraDBCredentials
 
+  # AuroraCluster - PostgreSQL Aurora database cluster
+  # Depends on: DBSubnetGroup, DBSecurityGroup, DatabaseSecret (conditional)
+  # Dependents: AuroraInstance, TaskDefinition
   AuroraCluster:
     Type: AWS::RDS::DBCluster
     Properties:
@@ -270,6 +318,8 @@ Resources:
       PreferredMaintenanceWindow: sun:05:00-sun:06:00
       Port: !Ref PostgresPort
 
+  # AuroraInstance - Aurora database instance within the cluster
+  # Depends on: AuroraCluster, DBSubnetGroup
   AuroraInstance:
     Type: AWS::RDS::DBInstance
     Properties:
@@ -279,7 +329,9 @@ Resources:
       DBSubnetGroupName: !Ref DBSubnetGroup
       PubliclyAccessible: false
 
-  # Create new certificate if requested
+  # NewCertificate - SSL certificate for custom domains
+  # Depends on: HostedZoneDiscovery (conditional)
+  # Dependents: HTTPSListener, WebCloudFrontDistribution, APIGatewayDomain, OIDCProxyDomain
   NewCertificate:
     Type: AWS::CertificateManager::Certificate
     Condition: CreateNewCertificate
@@ -309,6 +361,9 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::StackName}-Certificate"
 
+  # ECSSecurityGroup - Security group for ECS tasks allowing ALB access
+  # Depends on: VPC, ALBSecurityGroup
+  # Dependents: DBSecurityGroup, ECSService, TaskDefinition
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -323,6 +378,9 @@ Resources:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
 
+  # ALBSecurityGroup - Security group for Application Load Balancer allowing HTTP/HTTPS traffic
+  # Depends on: VPC
+  # Dependents: ECSSecurityGroup, ApplicationLoadBalancer
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -342,18 +400,24 @@ Resources:
           ToPort: 8080
           CidrIp: 0.0.0.0/0
 
+  # ECSCluster - ECS cluster to host Fargate tasks
+  # Dependents: ECSService, TaskDefinition, MarketplaceEntitlementLambda
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: AppCluster
 
-  # CloudWatch Log Groups for services
+  # ECSLogGroup - CloudWatch log group for ECS container logs
+  # Dependents: TaskDefinition
   ECSLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: /ecs/sysml-v2-api
       RetentionInDays: 14
 
+  # TaskDefinition - ECS task definition for SysML v2 API application
+  # Depends on: ECSExecutionRole, ECSTaskRole, ECSLogGroup, AuroraCluster, DatabaseSecret
+  # Dependents: ECSService
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -400,6 +464,8 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: sysml-v2-api
 
+  # ECSExecutionRole - IAM role for ECS task execution (pulling images, logging)
+  # Dependents: TaskDefinition
   ECSExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -413,6 +479,9 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
+  # ECSTaskRole - IAM role for ECS tasks to access RDS and Secrets Manager
+  # Depends on: AuroraCluster, DatabaseSecret
+  # Dependents: TaskDefinition
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
@@ -452,6 +521,9 @@ Resources:
                   - ssmmessages:OpenDataChannel
                 Resource: '*'
 
+  # ECSService - ECS service running SysML v2 API application
+  # Depends on: HTTPSListener, ECSCluster, TaskDefinition, PublicSubnet1, PublicSubnet2, ECSSecurityGroup, TargetGroup
+  # Dependents: MarketplaceEntitlementLambda
   ECSService:
     Type: AWS::ECS::Service
     DependsOn: HTTPSListener
@@ -475,6 +547,9 @@ Resources:
           ContainerPort: !Ref AppPort
           TargetGroupArn: !Ref TargetGroup
 
+  # ApplicationLoadBalancer - Load balancer for web traffic and API Gateway backend
+  # Depends on: PublicSubnetRouteTableAssociation1, PublicSubnetRouteTableAssociation2, PublicSubnet1, PublicSubnet2, ALBSecurityGroup
+  # Dependents: HTTPSListener, HTTPListener, HTTPListenerAPIGateway, TargetGroup, WebCloudFrontDistribution, APIGatewayProxyMethod
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     DependsOn: 
@@ -488,6 +563,9 @@ Resources:
         - !Ref ALBSecurityGroup
       Type: application
 
+  # TargetGroup - Target group for ECS tasks behind the load balancer
+  # Depends on: VPC
+  # Dependents: ECSService, HTTPSListener, HTTPListenerAPIGateway
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -511,7 +589,8 @@ Resources:
           Value: 300
 
       
-  # Simple Lambda function to serve OIDC configuration
+  # OIDCConfigLambdaRole - IAM role for OIDC configuration Lambda function
+  # Dependents: OIDCConfigLambda
   OIDCConfigLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -525,6 +604,9 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
+  # OIDCConfigLambda - Lambda function serving OIDC discovery configuration
+  # Depends on: OIDCConfigLambdaRole, UserPool
+  # Dependents: OIDCProxyConfigMethod, OIDCConfigLambdaPermission
   OIDCConfigLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -573,13 +655,17 @@ Resources:
                   'body': json.dumps(config)
               }
 
-  # Cognito Domain (using default Cognito domain)
+  # CognitoDomain - Cognito User Pool domain for authentication
+  # Depends on: UserPool
+  # Dependents: HTTPSListener
   CognitoDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       Domain: !Ref CognitoDomainName
       UserPoolId: !Ref UserPool
 
+  # ALBAuthenticationRole - IAM role for ALB Cognito authentication
+  # Depends on: UserPool
   ALBAuthenticationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -602,6 +688,9 @@ Resources:
                   - cognito-idp:DescribeUserPoolClient
                 Resource: !GetAtt UserPool.Arn
 
+  # HTTPSListener - HTTPS listener with Cognito authentication for web traffic
+  # Depends on: CognitoDomain, OIDCProxyDomain, ApplicationLoadBalancer, NewCertificate, UserPool, UserPoolClient, TargetGroup
+  # Dependents: ECSService
   HTTPSListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     DependsOn:
@@ -631,6 +720,8 @@ Resources:
           Order: 2
           TargetGroupArn: !Ref TargetGroup
 
+  # HTTPListener - HTTP listener redirecting to HTTPS
+  # Depends on: ApplicationLoadBalancer
   HTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -647,7 +738,9 @@ Resources:
             Query: '#{query}'
             StatusCode: HTTP_301
 
-  # HTTP Listener for API Gateway (no auth)
+  # HTTPListenerAPIGateway - HTTP listener for API Gateway backend (no authentication)
+  # Depends on: ApplicationLoadBalancer, TargetGroup
+  # Dependents: APIGatewayProxyMethod
   HTTPListenerAPIGateway:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -658,7 +751,8 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
 
-  # Lambda function to discover HostedZoneId
+  # HostedZoneDiscoveryRole - IAM role for hosted zone discovery Lambda
+  # Dependents: HostedZoneDiscoveryLambda
   HostedZoneDiscoveryRole:
     Type: AWS::IAM::Role
     Condition: AutoDiscoverHostedZone
@@ -683,6 +777,9 @@ Resources:
                   - route53:GetHostedZone
                 Resource: '*'
 
+  # HostedZoneDiscoveryLambda - Lambda function to auto-discover Route53 hosted zone
+  # Depends on: HostedZoneDiscoveryRole
+  # Dependents: HostedZoneDiscovery
   HostedZoneDiscoveryLambda:
     Type: AWS::Lambda::Function
     Condition: AutoDiscoverHostedZone
@@ -731,6 +828,9 @@ Resources:
                   print(f'Error: {str(e)}')
                   cfnresponse.send(event, context, cfnresponse.FAILED, {})
 
+  # HostedZoneDiscovery - Custom resource to discover hosted zone ID from domain name
+  # Depends on: HostedZoneDiscoveryLambda
+  # Dependents: NewCertificate, DNSRecordAPI, DNSRecordWeb, DNSRecordAuth
   HostedZoneDiscovery:
     Type: AWS::CloudFormation::CustomResource
     Condition: AutoDiscoverHostedZone
@@ -738,7 +838,9 @@ Resources:
       ServiceToken: !GetAtt HostedZoneDiscoveryLambda.Arn
       DomainName: !Ref DomainName
 
-  # Custom domain for API Gateway
+  # APIGatewayDomain - Custom domain for API Gateway with SSL certificate
+  # Depends on: NewCertificate
+  # Dependents: APIGatewayBasePathMapping, DNSRecordAPI
   APIGatewayDomain:
     Type: AWS::ApiGateway::DomainName
     Properties:
@@ -752,7 +854,8 @@ Resources:
           - REGIONAL
       SecurityPolicy: TLS_1_2
 
-  # Base path mapping for API Gateway
+  # APIGatewayBasePathMapping - Maps custom domain to API Gateway stage
+  # Depends on: APIGatewayDeployment, APIGatewayDomain, APIGateway
   APIGatewayBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
     DependsOn: APIGatewayDeployment
@@ -761,7 +864,8 @@ Resources:
       RestApiId: !Ref APIGateway
       Stage: prod
 
-  # DNS Record for API (primary) - points to API Gateway custom domain
+  # DNSRecordAPI - DNS record pointing main domain to API Gateway
+  # Depends on: APIGatewayDomain, HostedZoneDiscovery
   DNSRecordAPI:
     Type: AWS::Route53::RecordSet
     DependsOn: APIGatewayDomain
@@ -777,7 +881,8 @@ Resources:
         HostedZoneId: !GetAtt APIGatewayDomain.RegionalHostedZoneId
         EvaluateTargetHealth: false
 
-  # URL Rewrite Function for /docs endpoint
+  # URLRewriteFunction - CloudFront function to rewrite /docs URLs
+  # Dependents: WebCloudFrontDistribution
   URLRewriteFunction:
     Type: AWS::CloudFront::Function
     Properties:
@@ -799,7 +904,9 @@ Resources:
           return request;
         }
 
-  # CloudFront distribution for Web UI
+  # WebCloudFrontDistribution - CloudFront distribution for web interface
+  # Depends on: NewCertificate, ApplicationLoadBalancer, URLRewriteFunction
+  # Dependents: DNSRecordWeb
   WebCloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -838,7 +945,8 @@ Resources:
         Aliases:
           - !Sub "web.${DomainName}"
 
-  # DNS Record for Web UI - points to CloudFront
+  # DNSRecordWeb - DNS record pointing web subdomain to CloudFront
+  # Depends on: WebCloudFrontDistribution, HostedZoneDiscovery
   DNSRecordWeb:
     Type: AWS::Route53::RecordSet
     Properties:
@@ -853,7 +961,8 @@ Resources:
         HostedZoneId: !FindInMap [RegionToHostedZoneId, global, CloudFront]
         EvaluateTargetHealth: false
 
-  # Lambda function for Marketplace entitlement checking
+  # MarketplaceEntitlementLambdaRole - IAM role for marketplace entitlement Lambda
+  # Dependents: MarketplaceEntitlementLambda
   MarketplaceEntitlementLambdaRole:
     Type: AWS::IAM::Role
     Condition: EnableMarketplaceCheck
@@ -879,6 +988,9 @@ Resources:
                   - ecs:DescribeServices
                 Resource: '*'
 
+  # MarketplaceEntitlementLambda - Lambda function to check marketplace entitlements
+  # Depends on: MarketplaceEntitlementLambdaRole, ECSCluster, ECSService
+  # Dependents: MarketplaceEntitlementSchedule, MarketplaceEntitlementLambdaPermission
   MarketplaceEntitlementLambda:
     Type: AWS::Lambda::Function
     Condition: EnableMarketplaceCheck
@@ -941,6 +1053,9 @@ Resources:
                   print(f'Error: {str(e)}')
                   raise e
 
+  # MarketplaceEntitlementSchedule - CloudWatch Events rule to trigger entitlement checks
+  # Depends on: MarketplaceEntitlementLambda
+  # Dependents: MarketplaceEntitlementLambdaPermission
   MarketplaceEntitlementSchedule:
     Type: AWS::Events::Rule
     Condition: EnableMarketplaceCheck
@@ -952,6 +1067,8 @@ Resources:
         - Arn: !GetAtt MarketplaceEntitlementLambda.Arn
           Id: 'MarketplaceEntitlementTarget'
 
+  # MarketplaceEntitlementLambdaPermission - Permission for CloudWatch Events to invoke Lambda
+  # Depends on: MarketplaceEntitlementLambda, MarketplaceEntitlementSchedule
   MarketplaceEntitlementLambdaPermission:
     Type: AWS::Lambda::Permission
     Condition: EnableMarketplaceCheck
@@ -961,7 +1078,8 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt MarketplaceEntitlementSchedule.Arn
 
-  # Lambda function for Cognito PreSignUp trigger
+  # CognitoPreSignUpLambdaRole - IAM role for Cognito pre-signup Lambda
+  # Dependents: CognitoPreSignUpLambda
   CognitoPreSignUpLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -984,6 +1102,9 @@ Resources:
                   - cognito-idp:ListUsers
                 Resource: !Sub 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*'
 
+  # CognitoPreSignUpLambda - Lambda function to enforce user limits during signup
+  # Depends on: CognitoPreSignUpLambdaRole
+  # Dependents: CognitoPreSignUpLambdaPermission
   CognitoPreSignUpLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -1017,6 +1138,8 @@ Resources:
                   print(f'Error: {str(e)}')
                   raise e
 
+  # CognitoPreSignUpLambdaPermission - Permission for Cognito to invoke pre-signup Lambda
+  # Depends on: CognitoPreSignUpLambda, UserPool
   CognitoPreSignUpLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -1025,7 +1148,8 @@ Resources:
       Principal: cognito-idp.amazonaws.com
       SourceArn: !GetAtt UserPool.Arn
         
-  # Cognito User Pool
+  # UserPool - Cognito User Pool for user authentication
+  # Dependents: CognitoDomain, UserPoolClient, UserPoolClientAPI, HTTPSListener, OIDCConfigLambda, ALBAuthorizerLambda, AdminUser, CognitoPreSignUpLambdaPermission, DNSRecordAuth, OIDCProxyLambda
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -1052,7 +1176,9 @@ Resources:
           RequireSymbols: true
           RequireUppercase: true
 
-  # Cognito User Pool Client
+  # UserPoolClient - Cognito User Pool client for ALB authentication
+  # Depends on: UserPool
+  # Dependents: HTTPSListener
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -1073,7 +1199,8 @@ Resources:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
           
-  # DNS Record for Auth Domain (points to API Gateway)
+  # DNSRecordAuth - DNS record pointing auth subdomain to OIDC proxy API Gateway
+  # Depends on: OIDCProxyDomain, HostedZoneDiscovery
   DNSRecordAuth:
     Type: AWS::Route53::RecordSet
     Properties:
@@ -1090,7 +1217,8 @@ Resources:
         
   # No need for domain verification since we're using a default Cognito domain
       
-  # API Gateway for OIDC endpoints
+  # OIDCProxyAPI - API Gateway for OIDC and OAuth2 endpoint proxying
+  # Dependents: OIDCProxyWellKnownResource, OIDCProxyOAuth2Resource, OIDCProxyConfigMethod, OIDCProxyOAuth2Method, OIDCProxyDeployment, OIDCConfigLambdaPermission, OIDCProxyLambdaPermission, OIDCProxyBasePathMapping
   OIDCProxyAPI:
     Type: AWS::ApiGateway::RestApi
     Properties:
@@ -1100,7 +1228,9 @@ Resources:
         Types:
           - REGIONAL
 
-  # Well-known resource
+  # OIDCProxyWellKnownResource - API Gateway resource for .well-known path
+  # Depends on: OIDCProxyAPI
+  # Dependents: OIDCProxyOpenIDResource
   OIDCProxyWellKnownResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -1108,7 +1238,9 @@ Resources:
       ParentId: !GetAtt OIDCProxyAPI.RootResourceId
       PathPart: ".well-known"
 
-  # OpenID configuration resource
+  # OIDCProxyOpenIDResource - API Gateway resource for OpenID configuration
+  # Depends on: OIDCProxyAPI, OIDCProxyWellKnownResource
+  # Dependents: OIDCProxyConfigMethod
   OIDCProxyOpenIDResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -1116,7 +1248,9 @@ Resources:
       ParentId: !Ref OIDCProxyWellKnownResource
       PathPart: "openid-configuration"
 
-  # Method for OIDC configuration
+  # OIDCProxyConfigMethod - API Gateway method for OIDC configuration endpoint
+  # Depends on: OIDCProxyAPI, OIDCProxyOpenIDResource, OIDCConfigLambda
+  # Dependents: OIDCProxyDeployment
   OIDCProxyConfigMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -1129,7 +1263,9 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCConfigLambda.Arn}/invocations"
 
-  # OAuth2 resource
+  # OIDCProxyOAuth2Resource - API Gateway resource for OAuth2 endpoints
+  # Depends on: OIDCProxyAPI
+  # Dependents: OIDCProxyOAuth2ProxyResource
   OIDCProxyOAuth2Resource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -1137,7 +1273,9 @@ Resources:
       ParentId: !GetAtt OIDCProxyAPI.RootResourceId
       PathPart: "oauth2"
 
-  # OAuth2 proxy with greedy path parameter
+  # OIDCProxyOAuth2ProxyResource - API Gateway resource with greedy path for OAuth2 endpoints
+  # Depends on: OIDCProxyAPI, OIDCProxyOAuth2Resource
+  # Dependents: OIDCProxyOAuth2Method
   OIDCProxyOAuth2ProxyResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -1145,7 +1283,9 @@ Resources:
       ParentId: !Ref OIDCProxyOAuth2Resource
       PathPart: "{proxy+}"
 
-  # Method for OAuth2 proxy
+  # OIDCProxyOAuth2Method - API Gateway method for OAuth2 endpoint proxying
+  # Depends on: OIDCProxyAPI, OIDCProxyOAuth2ProxyResource, OIDCProxyLambda
+  # Dependents: OIDCProxyDeployment
   OIDCProxyOAuth2Method:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -1160,7 +1300,9 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OIDCProxyLambda.Arn}/invocations"
 
-  # Deployment for OIDC proxy API
+  # OIDCProxyDeployment - API Gateway deployment for OIDC proxy
+  # Depends on: OIDCProxyConfigMethod, OIDCProxyOAuth2Method, OIDCProxyAPI
+  # Dependents: OIDCProxyBasePathMapping
   OIDCProxyDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn: 
@@ -1170,7 +1312,8 @@ Resources:
       RestApiId: !Ref OIDCProxyAPI
       StageName: prod
 
-  # Permission for Lambda to be invoked by API Gateway
+  # OIDCConfigLambdaPermission - Permission for API Gateway to invoke OIDC config Lambda
+  # Depends on: OIDCConfigLambda, OIDCProxyAPI
   OIDCConfigLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -1179,7 +1322,8 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/GET/.well-known/openid-configuration"
 
-  # Permission for OAuth2 proxy Lambda
+  # OIDCProxyLambdaPermission - Permission for API Gateway to invoke OAuth2 proxy Lambda
+  # Depends on: OIDCProxyLambda, OIDCProxyAPI
   OIDCProxyLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -1188,7 +1332,9 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OIDCProxyAPI}/*/*"
 
-  # Custom domain for OIDC proxy API
+  # OIDCProxyDomain - Custom domain for OIDC proxy API Gateway
+  # Depends on: NewCertificate
+  # Dependents: OIDCProxyBasePathMapping, DNSRecordAuth, HTTPSListener
   OIDCProxyDomain:
     Type: AWS::ApiGateway::DomainName
     Properties:
@@ -1202,7 +1348,8 @@ Resources:
           - REGIONAL
       SecurityPolicy: TLS_1_2
 
-  # Base path mapping for OIDC proxy API
+  # OIDCProxyBasePathMapping - Maps OIDC proxy domain to API Gateway stage
+  # Depends on: OIDCProxyDomain, OIDCProxyAPI, OIDCProxyDeployment
   OIDCProxyBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
     Properties:
@@ -1210,7 +1357,8 @@ Resources:
       RestApiId: !Ref OIDCProxyAPI
       Stage: prod
       
-  # Lambda function to proxy OIDC discovery requests
+  # OIDCProxyRole - IAM role for OIDC proxy Lambda function
+  # Dependents: OIDCProxyLambda
   OIDCProxyRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1224,6 +1372,9 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
+  # OIDCProxyLambda - Lambda function to proxy OAuth2 requests to Cognito
+  # Depends on: OIDCProxyRole, UserPool
+  # Dependents: OIDCProxyOAuth2Method, OIDCProxyLambdaPermission
   OIDCProxyLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -1352,7 +1503,8 @@ Resources:
 
  
 
-  # Lambda Authorizer for ALB JWT validation
+  # ALBAuthorizerRole - IAM role for API Gateway Lambda authorizer
+  # Dependents: ALBAuthorizerLambda
   ALBAuthorizerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1375,6 +1527,9 @@ Resources:
                   - cognito-idp:GetUser
                 Resource: '*'
 
+  # ALBAuthorizerLambda - Lambda authorizer for API Gateway JWT validation
+  # Depends on: ALBAuthorizerRole, UserPool
+  # Dependents: APIGatewayAuthorizer, APIGatewayAuthorizerRole, ALBAuthorizerPermission
   ALBAuthorizerLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -1468,7 +1623,8 @@ Resources:
                   print(f'Authorization error: {str(e)}')
                   raise Exception('Unauthorized')
 
-  # API Gateway to handle Lambda authorization
+  # APIGateway - API Gateway for authenticated SysML v2 API access
+  # Dependents: APIGatewayAuthorizer, APIGatewayProxyResource, APIGatewayProxyMethod, APIGatewayDeployment, APIGatewayDomain, APIGatewayBasePathMapping, ALBAuthorizerPermission
   APIGateway:
     Type: AWS::ApiGateway::RestApi
     Properties:
@@ -1478,6 +1634,9 @@ Resources:
         Types:
           - REGIONAL
 
+  # APIGatewayAuthorizer - Lambda authorizer for API Gateway
+  # Depends on: APIGateway, ALBAuthorizerLambda, APIGatewayAuthorizerRole
+  # Dependents: APIGatewayProxyMethod
   APIGatewayAuthorizer:
     Type: AWS::ApiGateway::Authorizer
     Properties:
@@ -1488,6 +1647,9 @@ Resources:
       AuthorizerCredentials: !GetAtt APIGatewayAuthorizerRole.Arn
       IdentitySource: method.request.header.Authorization
 
+  # APIGatewayAuthorizerRole - IAM role for API Gateway to invoke Lambda authorizer
+  # Depends on: ALBAuthorizerLambda
+  # Dependents: APIGatewayAuthorizer
   APIGatewayAuthorizerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1507,6 +1669,9 @@ Resources:
                 Action: lambda:InvokeFunction
                 Resource: !GetAtt ALBAuthorizerLambda.Arn
 
+  # APIGatewayProxyResource - API Gateway resource with greedy path parameter
+  # Depends on: APIGateway
+  # Dependents: APIGatewayProxyMethod
   APIGatewayProxyResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -1514,6 +1679,9 @@ Resources:
       ParentId: !GetAtt APIGateway.RootResourceId
       PathPart: "{proxy+}"
 
+  # APIGatewayProxyMethod - API Gateway method proxying to ALB with authorization
+  # Depends on: APIGateway, APIGatewayProxyResource, APIGatewayAuthorizer, ApplicationLoadBalancer
+  # Dependents: APIGatewayDeployment
   APIGatewayProxyMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -1531,6 +1699,9 @@ Resources:
         RequestParameters:
           integration.request.path.proxy: method.request.path.proxy
 
+  # APIGatewayDeployment - API Gateway deployment for main API
+  # Depends on: APIGatewayProxyMethod, APIGateway
+  # Dependents: APIGatewayBasePathMapping
   APIGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn: APIGatewayProxyMethod
@@ -1538,6 +1709,8 @@ Resources:
       RestApiId: !Ref APIGateway
       StageName: prod
 
+  # ALBAuthorizerPermission - Permission for API Gateway to invoke Lambda authorizer
+  # Depends on: ALBAuthorizerLambda, APIGateway
   ALBAuthorizerPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -1546,7 +1719,9 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/*/*"
 
-  # Lambda function to create admin user
+  # AdminUserCreatorRole - IAM role for admin user creation Lambda
+  # Depends on: UserPool
+  # Dependents: AdminUserCreatorLambda
   AdminUserCreatorRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1572,6 +1747,9 @@ Resources:
                   - cognito-idp:AdminSetUserPassword
                 Resource: !GetAtt UserPool.Arn
 
+  # AdminUserCreatorLambda - Lambda function to create initial admin user
+  # Depends on: AdminUserCreatorRole
+  # Dependents: AdminUser
   AdminUserCreatorLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -1678,6 +1856,8 @@ Resources:
                   print(f'Error: {str(e)}')
                   cfnresponse.send(event, context, cfnresponse.FAILED, {})
 
+  # AdminUser - Custom resource to create initial admin user in Cognito
+  # Depends on: AdminUserCreatorLambda, UserPool
   AdminUser:
     Type: AWS::CloudFormation::CustomResource
     Properties:
@@ -1687,7 +1867,8 @@ Resources:
       Email: !Ref AdminEmail
       Password: !Ref AdminPassword
 
-  # Cognito User Pool Client for API/Programmatic Access
+  # UserPoolClientAPI - Cognito User Pool client for programmatic API access
+  # Depends on: UserPool
   UserPoolClientAPI:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -1695,13 +1876,16 @@ Resources:
       ClientName: !Sub "${AWS::StackName}-API-Client"
       GenerateSecret: true
       AllowedOAuthFlows:
-        - client_credentials
-        - authorization_code
+        - implicit
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes:
         - openid
         - email
         - profile
+      CallbackURLs:
+        - "http://localhost:3000/callback"
+        - !Sub "https://${DomainName}/oauth2/idpresponse"
+        - !Sub "https://web.${DomainName}/oauth2/idpresponse"
       SupportedIdentityProviders:
         - COGNITO
       ExplicitAuthFlows:
